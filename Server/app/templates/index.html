@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ current_app.config['SITE_NAME'] }}</title>
+    <link href="https://cdn.jsdmirror.com/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdmirror.com/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .btn-primary {
+            background-color: #4361ee;
+            border-color: #4361ee;
+        }
+        .btn-primary:hover {
+            background-color: #3a56d4;
+            border-color: #3a56d4;
+        }
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4361ee;
+        }
+        .feature-icon {
+            font-size: 2.5rem;
+            color: #4361ee;
+        }
+        .bg-custom {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="text-center mb-5">
+                    <div class="logo">{{ current_app.config['SITE_NAME'] }}</div>
+                    <p class="lead text-muted">{{ current_app.config['SITE_DESC'] }}</p>
+                </div>
+                
+                <div class="card shadow">
+                    <div class="card-body p-4">
+                        <h3 class="card-title mb-4">软件更新与授权管理系统</h3>
+                        <p class="card-text mb-4">
+                            {{ current_app.config['SITE_NAME'] }} 让您的软件更新和授权管理变得更加简单高效。
+                            无论您是独立开发者还是团队负责人，都能轻松管理您的软件产品。
+                        </p>
+                        
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <i class="bi bi-arrow-repeat feature-icon mb-3"></i>
+                                    <h5>一键更新</h5>
+                                    <p class="small text-muted">轻松管理软件更新，支持强制更新和版本日志</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <i class="bi bi-shield-check feature-icon mb-3"></i>
+                                    <h5>安全授权</h5>
+                                    <p class="small text-muted">强大的授权管理系统，保护您的知识产权</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <i class="bi bi-bell feature-icon mb-3"></i>
+                                    <h5>公告通知</h5>
+                                    <p class="small text-muted">实时推送重要公告，保持用户与开发者沟通顺畅</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <a href="{{ url_for('auth.register') }}" class="btn btn-primary px-4 py-2 me-2">免费注册</a>
+                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary px-4 py-2">登录</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <p class="text-muted">管理员已为您配置的 API 地址: <strong>{{ current_app.config['SITE_URL'] }}{{ current_app.config['API_BASE_URL'] }}</strong></p>
+                    <p class="text-muted">如需帮助，请联系管理员: <a href="mailto:{{ current_app.config['ADMIN_EMAIL'] }}">{{ current_app.config['ADMIN_EMAIL'] }}</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdmirror.com/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-Migrate
+Flask-Mail
+python-dotenv
+python-jose
+passlib
+python-multipart
+Werkzeug
+sqlalchemy

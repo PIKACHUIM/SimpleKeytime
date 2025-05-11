@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仪表盘 - {{ site_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .sidebar {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            height: calc(100vh - 76px);
+            position: fixed;
+            width: 260px;
+            overflow-y: auto;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #495057;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+        .sidebar-link:hover, .sidebar-link.active {
+            background-color: rgba(67, 97, 238, 0.1);
+            color: #4361ee;
+        }
+        .sidebar-link i {
+            margin-right: 10px;
+            font-size: 1.25rem;
+        }
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+        }
+        .profile-card {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .profile-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .chart-container {
+            height: 250px;
+        }
+        .app-card {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+            margin-bottom: 15px;
+        }
+        .app-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+        .notification-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: #f03e3e;
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <!-- 侧边导航栏 -->
+    <div class="sidebar p-4">
+        <div class="d-flex align-items-center mb-4">
+            <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Logo" width="32" height="32" class="me-2">
+            <h5 class="mb-0">{{ site_name }}</h5>
+        </div>
+        
+        <div class="list-group">
+            <a href="{{ url_for('dashboard.index') }}" class="list-group-item list-group-item-action sidebar-link active">
+                <i class="bi bi-speedometer2"></i> 仪表盘
+            </a>
+            <a href="{{ url_for('dashboard.profile') }}" class="list-group-item list-group-item-action sidebar-link">
+                <i class="bi bi-person"></i> 个人资料
+            </a>
+            <a href="{{ url_for('dashboard.projects') }}" class="list-group-item list-group-item-action sidebar-link">
+                <i class="bi bi-app"></i> 应用管理
+            </a>
+            <a href="{{ url_for('dashboard.announcements') }}" class="list-group-item list-group-item-action sidebar-link">
+                <i class="bi bi-megaphone"></i> 公告通知
+                {% if unread_announcements %}
+                <span class="notification-badge">{{ unread_announcements }}</span>
+                {% endif %}
+            </a>
+        </div>
+        
+        <hr class="my-4">
+        
+        <div>
+            <p class="mb-2 fw-bold">API 信息</p>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span>API 地址</span>
+                <span class="badge bg-primary">{{ api_base_url }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <span>开发者ID</span>
+                <span class="badge bg-info">{{ current_user.developer_id }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 主内容区域 -->
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white rounded shadow-sm mb-4">
+            <div class="container-fluid">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{{ url_for('dashboard.index') }}">仪表盘</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard.projects') }}">应用管理</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard.announcements') }}">公告通知</a>
+                        </li>
+                    </ul>
+                    <div class="d-flex align-items-center">
+                        <div class="dropdown">
+                            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+                                <img src="{{ current_user.avatar or url_for('static', filename='img/default-avatar.jpg') }}" alt="Profile" width="32" height="32" class="rounded-circle me-2">
+                                <span>{{ current_user.username }}</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownUser1">
+                                <li><a class="dropdown-item" href="{{ url_for('dashboard.profile') }}">个人资料</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('dashboard.projects') }}">应用管理</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">退出登录</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="row">
+            <div class="col-md-6 col-xl-3 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-info p-3 rounded me-3">
+                                <i class="bi bi-app text-white fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="card-subtitle mb-1 text-muted">应用数量</h6>
+                                <h3 class="card-title mb-0">{{ apps|length }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-success p-3 rounded me-3">
+                                <i class="bi bi-check-circle text-white fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="card-subtitle mb-1 text-muted">已激活用户</h6>
+                                <h3 class="card-title mb-0">{{ stats.active_users }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-warning p-3 rounded me-3">
+                                <i class="bi bi-exclamation-circle text-white fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="card-subtitle mb-1 text-muted">待更新应用</h6>
+                                <h3 class="card-title mb-0">{{ stats.pending_updates }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3 mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-danger p-3 rounded me-3">
+                                <i class="bi bi-megaphone text-white fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="card-subtitle mb-1 text-muted">未读公告</h6>
+                                <h3 class="card-title mb-0">{{ stats.unread_announcements }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">应用更新统计</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="updateChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">最近公告</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            {% for announcement in recent_announcements %}
+                            <div class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ announcement.title }}</h6>
+                                    <small>{{ announcement.created_at.strftime('%b %d') }}</small>
+                                </div>
+                                <p class="mb-1 text-truncate">{{ announcement.content|truncate(100) }}</p>
+                                <small><a href="{{ url_for('dashboard.announcement_detail', announcement_id=announcement.id) }}">查看完整内容</a></small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">您的应用</h5>
+                <a href="{{ url_for('dashboard.create_project') }}" class="btn btn-sm btn-primary">创建应用</a>
+            </div>
+            <div class="card-body">
+                {% if apps %}
+                <div class="row">
+                    {% for app in apps %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card app-card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ app.name }}</h5>
+                                <p class="card-text text-muted">{{ app.description|truncate(50) }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">最新版本: {{ app.latest_version }}</small>
+                                    {% if app.force_update %}
+                                    <span class="badge bg-danger">强制更新</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white">
+                                <a href="{{ url_for('dashboard.edit_project', app_id=app.app_id) }}" class="btn btn-sm btn-outline-primary w1-00">管理</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center p-4">
+                    <i class="bi bi-app text-secondary fs-1 mb-3"></i>
+                    <p class="text-muted">您还没有创建任何应用</p>
+                    <a href="{{ url_for('dashboard.create_project') }}" class="btn btn-primary">创建第一个应用</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // 初始化图表
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('updateChart').getContext('2d');
+            const updateChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                    datasets: [{
+                        label: '更新次数',
+                        data: [12, 19, 8, 15, 22, 9, 17],
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                        borderColor: '#4361ee',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
