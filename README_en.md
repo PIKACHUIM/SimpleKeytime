@@ -55,7 +55,7 @@ By default, the server will run on `http://127.0.0.1:80`. You can access the Sim
 
 ### Default Admin Account
 
-- **Email**: admin@example.com
+- **Email**: admin@simplekeytime.com
 - **Password**: admin (Please change the default password upon first login)
 
 ## 🛠️ Configuration
