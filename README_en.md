@@ -1,12 +1,14 @@
-# SimpleKeytime
-[简体中文](README.md)
+<div align="center">
+             <img src="https://img.wjwj.top/2025/05/11/56d49f560848d1f28e6356b77b50a8dd.png" alt="SKT Logo" width="256" />
+             <h1>SimpleKeytime</h1>
+             <a href="README.md">简体中文 README</a>
+</div>
+<br>
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Flask Version](https://img.shields.io/badge/Flask-2.3.3-blue.svg)](https://flask.palletsprojects.com/)
 [![SQLAlchemy Version](https://img.shields.io/badge/SQLAlchemy-2.0.23-blue.svg)](https://www.sqlalchemy.org/)
-
-![Logo](https://img.wjwj.top/2025/05/11/56d49f560848d1f28e6356b77b50a8dd.png)  <!-- Replace with your logo image link -->
 
 SimpleKeytime is an open-source software update, licensing, key management, and announcement notification system designed to provide developers with a simple and efficient management experience.
 

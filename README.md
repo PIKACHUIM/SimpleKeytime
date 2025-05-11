@@ -1,12 +1,15 @@
-# SimpleKeytime
-[English](README_en.md)
+<div align="center">
+             <img src="https://img.wjwj.top/2025/05/11/56d49f560848d1f28e6356b77b50a8dd.png" alt="SKT Logo" width="256" />
+             <h1>SimpleKeytime</h1>
+             <a href="README_en.md">English README</a>
+</div>
+<br>
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Flask Version](https://img.shields.io/badge/Flask-2.3.3-blue.svg)](https://flask.palletsprojects.com/)
 [![SQLAlchemy Version](https://img.shields.io/badge/SQLAlchemy-2.0.23-blue.svg)](https://www.sqlalchemy.org/)
 
-![Logo](https://img.wjwj.top/2025/05/11/56d49f560848d1f28e6356b77b50a8dd.png)
 
 SimpleKeytime 是一个开源的软件更新、授权、卡密管理及公告通知系统，旨在为开发者提供简洁高效的管理体验。
 
