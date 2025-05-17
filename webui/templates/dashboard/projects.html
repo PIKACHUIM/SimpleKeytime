@@ -41,7 +41,16 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-span-2 text-sm text-gray-500 font-mono truncate">{{ project.app_id }}</div>
+                <div class="col-span-2 text-sm text-gray-500 font-mono truncate">
+                    <div class="flex items-center group">
+                        <span class="truncate max-w-[120px]" title="{{ project.app_id }}">{{ project.app_id|truncate(12, True, '...') }}</span>
+                        <button class="copy-appid-btn ml-2 text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                data-appid="{{ project.app_id }}"
+                                title="复制AppID">
+                            <i class="fas fa-copy text-xs"></i>
+                        </button>
+                    </div>
+                </div>
                 <div class="col-span-2">
                     {% if project.latest_version %}
                     <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
@@ -276,6 +285,29 @@
                 alert('获取项目数据失败，请刷新页面重试');
             });
     }
+
+    // 复制AppID功能
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.copy-appid-btn')) {
+            const button = e.target.closest('.copy-appid-btn');
+            const appId = button.dataset.appid;
+            
+            navigator.clipboard.writeText(appId).then(() => {
+                // 临时改变按钮样式表示复制成功
+                const icon = button.querySelector('i');
+                icon.classList.remove('fa-copy');
+                icon.classList.add('fa-check', 'text-green-500');
+                
+                setTimeout(() => {
+                    icon.classList.remove('fa-check', 'text-green-500');
+                    icon.classList.add('fa-copy');
+                }, 2000);
+            }).catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制');
+            });
+        }
+    });
     
     // 使用事件委托处理编辑按钮点击
     document.addEventListener('click', function(e) {
