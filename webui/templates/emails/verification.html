@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>验证您的邮箱 - SimpleKeytime</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .logo {
+            color: #6366f1;
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .content {
+            background-color: #f9fafb;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #6366f1;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="{{ app_url }}" class="logo">
+            <i class="fas fa-key"></i> SimpleKeytime
+        </a>
+    </div>
+    
+    <div class="content">
+        <h1>欢迎加入 SimpleKeytime!</h1>
+        <p>亲爱的 {{ user.username }},</p>
+        <p>感谢您注册 SimpleKeytime 开发者账户。请点击下面的按钮验证您的邮箱地址：</p>
+        
+        <div style="text-align: center;">
+            <a href="{{ verify_url }}" class="button">验证邮箱</a>
+        </div>
+        
+        <p>如果您无法点击上面的按钮，请复制以下链接到浏览器地址栏访问：</p>
+        <p><a href="{{ verify_url }}" style="word-break: break-all;">{{ verify_url }}</a></p>
+        
+        <p>如果您没有注册 SimpleKeytime 账户，请忽略此邮件。</p>
+    </div>
+    
+    <div class="footer">
+        <p>© {{ current_year }} SimpleKeytime. 保留所有权利.</p>
+        <p>此邮件由系统自动发送，请勿直接回复。</p>
+    </div>
+</body>
+</html>

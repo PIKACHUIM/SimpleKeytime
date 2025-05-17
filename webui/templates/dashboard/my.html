@@ -1,0 +1,88 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_title %}我的账户{% endblock %}
+
+{% block dashboard_content %}
+<div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">个人信息</h3>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500">管理您的账户信息和设置</p>
+    </div>
+    <form method="POST" enctype="multipart/form-data">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="grid grid-cols-1 gap-6">
+                <div class="flex items-center">
+                    <div class="mr-4">
+                        {% if user.avatar %}
+                            <img id="avatar-preview" src="{{ user.avatar }}" alt="Avatar" class="h-16 w-16 rounded-full">
+                        {% else %}
+                            <div id="avatar-preview" class="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <i class="fas fa-user text-indigo-600 text-xl"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="avatar" class="block text-sm font-medium text-gray-700">更换头像</label>
+                        <div class="mt-1 flex items-center">
+                            <input type="file" id="avatar" name="avatar" accept="image/*" class="hidden" onchange="previewAvatar(this)">
+                            <label for="avatar" class="px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
+                                选择图片
+                            </label>
+                            <span class="ml-3 text-sm text-gray-500" id="avatar-filename">未选择文件</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">用户名</label>
+                    <input type="text" id="username" value="{{ user.username }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100" readonly>
+                </div>
+                
+                <div>
+                    <label for="dev_id" class="block text-sm font-medium text-gray-700">开发者ID</label>
+                    <input type="text" id="dev_id" value="{{ user.dev_id }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100" readonly>
+                </div>
+                
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">邮箱</label>
+                    <input type="email" id="email" value="{{ user.email }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100" readonly>
+                </div>
+                
+                <div>
+                    <label for="nickname" class="block text-sm font-medium text-gray-700">昵称</label>
+                    <input type="text" name="nickname" id="nickname" value="{{ user.nickname or '' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+            </div>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                保存更改
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function previewAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const avatarPreview = document.getElementById('avatar-preview');
+            if (avatarPreview.tagName === 'IMG') {
+                avatarPreview.src = e.target.result;
+            } else {
+                // 如果是默认的div头像，替换为img
+                const newAvatar = document.createElement('img');
+                newAvatar.id = 'avatar-preview';
+                newAvatar.src = e.target.result;
+                newAvatar.alt = 'Avatar';
+                newAvatar.className = 'h-16 w-16 rounded-full';
+                avatarPreview.parentNode.replaceChild(newAvatar, avatarPreview);
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+        document.getElementById('avatar-filename').textContent = input.files[0].name;
+    }
+}
+</script>
+{% endblock %}

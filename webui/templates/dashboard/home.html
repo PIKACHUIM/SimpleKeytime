@@ -1,0 +1,112 @@
+{% extends "dashboard/base.html" %}
+
+{% block dashboard_title %}控制台主页{% endblock %}
+
+{% block dashboard_content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-semibold text-gray-900">欢迎回来, {{ user.nickname or user.username }}!</h2>
+    <p class="mt-1 text-sm text-gray-500">这是您的SimpleKeytime控制台，您可以在这里管理您的软件授权和更新。</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <!-- 项目统计 -->
+    <div class="bg-white p-6 rounded-lg shadow">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                <i class="fas fa-box-open text-xl"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">项目总数</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ projects_count }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- API调用统计 -->
+    <div class="bg-white p-6 rounded-lg shadow">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                <i class="fas fa-code text-xl"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">本月API调用</p>
+                <p class="text-2xl font-semibold text-gray-900">1,234</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 授权统计 -->
+    <div class="bg-white p-6 rounded-lg shadow">
+        <div class="flex items-center">
+            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                <i class="fas fa-key text-xl"></i>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">活跃授权</p>
+                <p class="text-2xl font-semibold text-gray-900">567</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 公告 -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">系统公告</h3>
+    </div>
+    <div class="divide-y divide-gray-200">
+        {% for announcement in announcements %}
+        <div class="px-6 py-4">
+            <div class="flex items-start">
+                <div class="flex-shrink-0 pt-1">
+                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <i class="fas fa-bullhorn text-blue-600"></i>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <h4 class="text-sm font-medium text-gray-900">{{ announcement.title }}</h4>
+                    <p class="mt-1 text-sm text-gray-500">{{ announcement.content }}</p>
+                    <p class="mt-2 text-xs text-gray-400">{{ announcement.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="px-6 py-8 text-center">
+            <i class="fas fa-info-circle text-gray-400 text-4xl mb-3"></i>
+            <p class="text-gray-500">暂无公告</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 快速操作 -->
+<div class="mt-8">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">快速操作</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="{{ url_for('dashboard_projects') }}" class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-indigo-300 hover:shadow-md transition duration-150">
+            <div class="flex items-center">
+                <div class="p-2 rounded-md bg-indigo-100 text-indigo-600 mr-3">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <span class="text-sm font-medium">创建新项目</span>
+            </div>
+        </a>
+        <a href="{{ url_for('dashboard_projects') }}" class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-indigo-300 hover:shadow-md transition duration-150">
+            <div class="flex items-center">
+                <div class="p-2 rounded-md bg-green-100 text-green-600 mr-3">
+                    <i class="fas fa-key"></i>
+                </div>
+                <span class="text-sm font-medium">生成授权密钥</span>
+            </div>
+        </a>
+        <a href="#" class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-indigo-300 hover:shadow-md transition duration-150">
+            <div class="flex items-center">
+                <div class="p-2 rounded-md bg-purple-100 text-purple-600 mr-3">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <span class="text-sm font-medium">查看统计报告</span>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

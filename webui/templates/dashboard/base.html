@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .sidebar-item.active {
+        background-color: #f3f4f6;
+        border-left: 4px solid #6366f1;
+    }
+    .sidebar-item.active .sidebar-icon {
+        color: #6366f1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-100">
+    <!-- 侧边栏 -->
+    <div class="fixed inset-y-0 left-0 w-64 bg-white shadow-md z-10">
+        <div class="flex items-center justify-center h-16 px-4 bg-indigo-600">
+            <div class="flex items-center">
+                <i class="fas fa-key text-white text-xl mr-2"></i>
+                <span class="text-white font-semibold text-lg">{{ app_name }}</span>
+            </div>
+        </div>
+        <div class="px-4 py-6">
+            <div class="flex items-center space-x-4 px-4 py-3 bg-gray-100 rounded-lg">
+                <div class="relative">
+                    {% if current_user.avatar %}
+                        <img src="{{ current_user.avatar }}" alt="Avatar" class="h-10 w-10 rounded-full">
+                    {% else %}
+                        <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                            <i class="fas fa-user text-indigo-600"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-900">{{ current_user.nickname or current_user.username }}</p>
+                    <p class="text-xs text-gray-500">开发者ID: {{ current_user.dev_id }}</p>
+                </div>
+            </div>
+        </div>
+        <nav class="px-4">
+            <a href="{{ url_for('dashboard_home') }}" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg {% if request.path == url_for('dashboard_home') %}active{% endif %}">
+                <i class="sidebar-icon fas fa-home mr-3 text-gray-500"></i>
+                <span>主页</span>
+            </a>
+            <a href="{{ url_for('dashboard_projects') }}" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg {% if request.path == url_for('dashboard_projects') %}active{% endif %}">
+                <i class="sidebar-icon fas fa-boxes mr-3 text-gray-500"></i>
+                <span>项目管理</span>
+            </a>
+            <a href="{{ url_for('dashboard_my') }}" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg {% if request.path == url_for('dashboard_my') %}active{% endif %}">
+                <i class="sidebar-icon fas fa-user mr-3 text-gray-500"></i>
+                <span>我的账户</span>
+            </a>
+            <div class="mt-8">
+                <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
+                    <i class="fas fa-sign-out-alt mr-3 text-gray-500"></i>
+                    <span>退出登录</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="ml-64">
+        <!-- 顶部导航 -->
+        <header class="bg-white shadow-sm">
+            <div class="px-6 py-4 flex justify-between items-center">
+                <h1 class="text-xl font-semibold text-gray-900">{% block dashboard_title %}{% endblock %}</h1>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <button class="p-2 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 内容 -->
+        <main class="p-6">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-6 rounded-md bg-{{ category }}-50 p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    {% if category == 'success' %}
+                                        <i class="fas fa-check-circle h-5 w-5 text-{{ category }}-400"></i>
+                                    {% else %}
+                                        <i class="fas fa-exclamation-circle h-5 w-5 text-{{ category }}-400"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-{{ category }}-800">
+                                        {{ message }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block dashboard_content %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% endblock %}
