@@ -1,3 +1,4 @@
+from argparse import _get_action_name
 from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -6,6 +7,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+import pytz
 import uuid
 import os
 import ssl
@@ -77,6 +79,34 @@ class User(db.Model, UserMixin):
             return False
         return self.reset_code == code and datetime.utcnow() < self.reset_code_expires
 
+
+class LicenseKey(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(64), unique=True, nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id', ondelete='CASCADE'), nullable=False)
+    duration_minutes = db.Column(db.Integer, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    is_banned = db.Column(db.Boolean, default=False)
+    activation_time = db.Column(db.DateTime)
+    expiry_time = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    notes = db.Column(db.Text)
+    
+    project = db.relationship('Project', back_populates='license_keys')
+
+    def calculate_expiry(self):
+        if self.activation_time and self.duration_minutes:
+            return self.activation_time + timedelta(minutes=self.duration_minutes)
+        return None
+
+    def is_expired(self):
+        if not self.expiry_time:
+            return False
+        # 统一时区处理
+        expiry_time = self.expiry_time.astimezone(pytz.UTC) if self.expiry_time.tzinfo else self.expiry_time.replace(tzinfo=None)
+        now = datetime.now(pytz.UTC) if self.expiry_time.tzinfo else datetime.utcnow()
+        return now > expiry_time
+
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     app_id = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
@@ -89,6 +119,7 @@ class Project(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    license_keys = db.relationship('LicenseKey', back_populates='project', cascade='all, delete-orphan')
 
 class Announcement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -108,6 +139,25 @@ def inject_globals():
     }
 
 # 辅助函数
+def generate_license_key(length=16):
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(chars) for _ in range(length))
+
+def calculate_duration_minutes(duration_value, duration_unit):
+    """将各种时间单位转换为分钟"""
+    duration_value = max(1, int(duration_value))
+    
+    if duration_unit == 'minutes':
+        return duration_value
+    elif duration_unit == 'hours':
+        return duration_value * 60
+    elif duration_unit == 'days':
+        return duration_value * 60 * 24
+    elif duration_unit == 'months':
+        return duration_value * 60 * 24 * 30  # 按30天算一个月
+    else:
+        return duration_value  # 默认按分钟
+
 def create_default_admin():
     with app.app_context():
         admin = User.query.filter_by(username='admin').first()
@@ -181,17 +231,22 @@ def login():
             flash('用户名或密码错误', 'error')
             return redirect(url_for('login'))
         
+        # 严格检查邮箱验证状态
         if not user.email_verified:
-            flash('您的邮箱尚未验证，请先验证邮箱后再登录', 'error')
+            # 重新发送验证邮件
+            send_verification_email(user)
+            flash('您的邮箱尚未验证，我们已重新发送验证邮件，请先验证邮箱后再登录', 'error')
             return redirect(url_for('login'))
         
-        user.last_login = datetime.utcnow()
-        user.last_login_ip = request.remote_addr
-        db.session.commit()
+        if user.email_verified:
+        # 登录用户
+            user.last_login = datetime.utcnow()
+            user.last_login_ip = request.remote_addr
+            db.session.commit()
         
-        login_user(user, remember=remember)
-        flash('登录成功', 'success')
-        return redirect(url_for('dashboard_home'))
+            login_user(user, remember=remember)
+            flash('登录成功', 'success')
+            return redirect(url_for('dashboard_home'))
     
     return render_template('auth/login.html', forgot_password_url=url_for('reset_password_request'))
 
@@ -525,6 +580,318 @@ def get_project_data(project_id):
         'download_url': project.download_url,
         'announcement': project.announcement,
         'force_update': project.force_update
+    })
+
+# 卡密管理路由
+@app.route('/dashboard/licenses', methods=['GET', 'POST'])
+@login_required
+def dashboard_licenses():
+    def get_beijing_time():
+        return datetime.now(pytz.timezone('Asia/Shanghai'))
+
+    # 获取用户所有项目
+    projects = Project.query.filter_by(user_id=current_user.id).all()
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        project_id = None
+        
+        # 批量操作处理
+        if action == 'batch_action':
+            try:
+                selected_ids = request.form.get('selected_licenses', '').split(',')
+                selected_ids = [int(id) for id in selected_ids if id]
+                
+                if not selected_ids:
+                    flash('请至少选择一个卡密', 'error')
+                    return redirect(request.referrer or url_for('dashboard_licenses'))
+                
+                batch_action = request.form.get('batch_action_type')
+                
+                if not selected_ids:
+                    flash('请至少选择一个卡密', 'error')
+                    return redirect(url_for('dashboard_licenses'))
+                
+                licenses = LicenseKey.query.join(Project)\
+                    .filter(
+                        LicenseKey.id.in_(selected_ids),
+                        Project.user_id == current_user.id
+                    ).all()
+                
+                for license in licenses:
+                    if batch_action == 'activate':
+                        license.is_active = True
+                        license.is_banned = False
+                    elif batch_action == 'deactivate':
+                        license.is_active = False
+                    elif batch_action == 'ban':
+                        license.is_banned = True
+                        license.is_active = False
+                    elif batch_action == 'unban':
+                        license.is_banned = False
+                    elif batch_action == 'delete':
+                        db.session.delete(license)
+                
+                db.session.commit()
+                flash(f'成功{get_action_name(batch_action)} {len(licenses)} 个卡密', 'success')
+                return redirect(url_for('dashboard_licenses'))
+            
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'批量操作失败: {str(e)}')
+                flash('批量操作失败', 'error')
+        
+        # 单个卡密编辑
+        elif action == 'edit_license':
+            try:
+                key_id = request.form.get('key_id')
+                license_key = LicenseKey.query.join(Project)\
+                    .filter(
+                        LicenseKey.id == key_id,
+                        Project.user_id == current_user.id
+                    ).first()
+                
+                if license_key:
+                    # 更新卡密信息
+                    duration_value = int(request.form.get('duration_value', 1))
+                    duration_unit = request.form.get('duration_unit', 'days')
+                    license_key.duration_minutes = calculate_duration_minutes(duration_value, duration_unit)
+                    license_key.notes = request.form.get('notes', '').strip() or None
+                    license_key.is_active = request.form.get('is_active') == 'on'
+                    license_key.is_banned = request.form.get('is_banned') == 'on'
+                    
+                    if license_key.is_banned:
+                        license_key.is_active = False
+                    
+                    # 重新计算过期时间
+                    if license_key.activation_time and license_key.is_active:
+                        license_key.expiry_time = license_key.calculate_expiry()
+                    
+                    db.session.commit()
+                    flash('卡密信息已更新', 'success')
+                    project_id = license_key.project_id
+                else:
+                    flash('卡密不存在或无权操作', 'error')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'更新卡密失败: {str(e)}')
+                flash('更新卡密失败', 'error')
+        
+        elif action == 'create':
+            try:
+                project_id = request.form.get('project_id')
+                quantity = int(request.form.get('quantity', 1))
+                duration_value = int(request.form.get('duration_value', 1))
+                duration_unit = request.form.get('duration_unit', 'days')
+                notes = request.form.get('notes', '').strip()
+                
+                project = Project.query.filter_by(id=project_id, user_id=current_user.id).first()
+                if not project:
+                    flash('项目不存在或无权操作', 'error')
+                    return redirect(url_for('dashboard_licenses'))
+                
+                duration_minutes = calculate_duration_minutes(duration_value, duration_unit)
+                
+                new_keys = []
+                for _ in range(quantity):
+                    key = LicenseKey(
+                        key=generate_license_key(),
+                        project_id=project.id,
+                        duration_minutes=duration_minutes,
+                        notes=notes if notes else None,
+                        created_at=get_beijing_time()
+                    )
+                    new_keys.append(key)
+                    db.session.add(key)
+                
+                db.session.commit()
+                flash(f'成功生成 {quantity} 个卡密', 'success')
+                
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'生成卡密失败: {str(e)}')
+                flash('生成卡密失败，请稍后再试', 'error')
+        
+        elif action in ['toggle_active', 'ban', 'unban', 'activate', 'deactivate']:
+            try:
+                key_id = request.form.get('key_id')
+                license_key = LicenseKey.query.join(Project)\
+                    .filter(
+                        LicenseKey.id == key_id,
+                        Project.user_id == current_user.id
+                    ).first()
+                
+                if license_key:
+                    if action == 'toggle_active':
+                        license_key.is_active = not license_key.is_active
+                        status = "激活" if license_key.is_active else "停用"
+                        flash(f'卡密已{status}', 'success')
+                    elif action == 'ban':
+                        license_key.is_banned = True
+                        license_key.is_active = False
+                        flash('卡密已封禁', 'success')
+                    elif action == 'unban':
+                        license_key.is_banned = False
+                        flash('卡密已解封', 'success')
+                    elif action == 'activate':
+                        license_key.activation_time = get_beijing_time()
+                        license_key.expiry_time = license_key.calculate_expiry()
+                        license_key.is_active = True
+                        flash('卡密已手动激活', 'success')
+                    elif action == 'deactivate':
+                        license_key.activation_time = None
+                        license_key.expiry_time = None
+                        flash('卡密已取消激活', 'success')
+                    
+                    project_id = license_key.project_id
+                    db.session.commit()
+                else:
+                    flash('卡密不存在或无权操作', 'error')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'操作失败: {str(e)}')
+                flash('操作失败', 'error')
+        
+        elif action == 'delete':
+            try:
+                key_id = request.form.get('key_id')
+                license_key = LicenseKey.query.join(Project)\
+                    .filter(
+                        LicenseKey.id == key_id,
+                        Project.user_id == current_user.id
+                    ).first()
+                
+                if license_key:
+                    project_id = license_key.project_id
+                    db.session.delete(license_key)
+                    db.session.commit()
+                    flash('卡密已删除', 'success')
+                else:
+                    flash('卡密不存在或无权操作', 'error')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'删除卡密失败: {str(e)}')
+                flash('删除卡密失败', 'error')
+        
+        # 检查并更新过期状态
+        expired_keys = LicenseKey.query.join(Project)\
+            .filter(
+                LicenseKey.expiry_time < get_beijing_time(),
+                LicenseKey.is_active == True,
+                Project.user_id == current_user.id
+            ).all()
+        
+        for key in expired_keys:
+            key.is_active = False
+        if expired_keys:
+            db.session.commit()
+        
+        if project_id:
+            return redirect(url_for('dashboard_licenses'))
+        return redirect(url_for('dashboard_licenses'))
+    
+    # GET请求处理
+    project_id = request.args.get('project_id')
+    selected_project = None
+    
+    # 获取卡密列表
+    query = LicenseKey.query.join(Project).filter(Project.user_id == current_user.id)
+    
+    if project_id:
+        try:
+            project_id = int(project_id)
+            selected_project = Project.query.filter_by(id=project_id, user_id=current_user.id).first()
+            if selected_project:
+                query = query.filter(LicenseKey.project_id == project_id)
+        except ValueError:
+            pass
+    
+    licenses = query.order_by(LicenseKey.created_at.desc()).all()
+    
+    # 转换时间为北京时间
+    for license in licenses:
+        if license.created_at:
+            license.created_at = license.created_at.astimezone(pytz.timezone('Asia/Shanghai'))
+        if license.activation_time:
+            license.activation_time = license.activation_time.astimezone(pytz.timezone('Asia/Shanghai'))
+        if license.expiry_time:
+            license.expiry_time = license.expiry_time.astimezone(pytz.timezone('Asia/Shanghai'))
+    
+    return render_template('dashboard/licenses.html', 
+                         projects=projects,
+                         licenses=licenses,
+                         selected_project_id=project_id if selected_project else None)
+
+def get_action_name(action_type):
+    return {
+        'activate': '激活',
+        'deactivate': '停用',
+        'ban': '封禁',
+        'unban': '解封',
+        'delete': '删除'
+    }.get(action_type, '操作')
+
+# 卡密编辑API
+@app.route('/api/license/<int:license_id>', methods=['GET'])
+@login_required
+def get_license_details(license_id):
+    license = LicenseKey.query.join(Project)\
+        .filter(
+            LicenseKey.id == license_id,
+            Project.user_id == current_user.id
+        ).first_or_404()
+    
+    return jsonify({
+        'id': license.id,
+        'key': license.key,
+        'duration_minutes': license.duration_minutes,
+        'notes': license.notes,
+        'is_active': license.is_active,
+        'is_banned': license.is_banned,
+        'activation_time': license.activation_time.isoformat() if license.activation_time else None,
+        'expiry_time': license.expiry_time.isoformat() if license.expiry_time else None
+    })
+
+
+# 卡密激活API
+@app.route('/api/license/activate', methods=['POST'])
+def activate_license():
+    data = request.get_json()
+    key = data.get('key')
+    app_id = data.get('app_id')
+    
+    if not key or not app_id:
+        return jsonify({'status': 'error', 'message': '参数不完整'}), 400
+    
+    license_key = LicenseKey.query.join(Project)\
+        .filter(
+            LicenseKey.key == key,
+            Project.app_id == app_id
+        ).first()
+    
+    if not license_key:
+        return jsonify({'status': 'error', 'message': '卡密无效'}), 404
+    
+    if license_key.is_banned:
+        return jsonify({'status': 'error', 'message': '卡密已被封禁'}), 403
+    
+    if not license_key.is_active:
+        return jsonify({'status': 'error', 'message': '卡密未激活'}), 403
+    
+    if license_key.activation_time:
+        if license_key.is_expired():
+            return jsonify({'status': 'error', 'message': '卡密已过期'}), 403
+        return jsonify({'status': 'error', 'message': '卡密已被使用'}), 403
+    
+    # 激活卡密
+    license_key.activation_time = datetime.utcnow()
+    license_key.expiry_time = license_key.calculate_expiry()
+    db.session.commit()
+    
+    return jsonify({
+        'status': 'success',
+        'expiry_time': license_key.expiry_time.isoformat(),
+        'duration_minutes': license_key.duration_minutes
     })
 
 # 错误处理
