@@ -54,15 +54,10 @@
                 <div class="col-span-2 text-sm text-gray-500">
                     {{ project.created_at.strftime('%Y-%m-%d') }}
                 </div>
+                <!-- 编辑按钮部分 -->
                 <div class="col-span-1 flex justify-end space-x-2">
-                    <button class="text-indigo-600 hover:text-indigo-900 p-2 rounded-md hover:bg-indigo-50"
+                    <button class="edit-project-btn text-indigo-600 hover:text-indigo-900 p-2 rounded-md hover:bg-indigo-50"
                             data-project-id="{{ project.id }}"
-                            data-project-name="{{ project.name }}"
-                            data-description="{{ project.description or '' }}"
-                            data-version="{{ project.latest_version or '' }}"
-                            data-url="{{ project.download_url or '' }}"
-                            data-announcement="{{ project.announcement or '' }}"
-                            data-force-update="{{ project.force_update|lower }}"
                             title="编辑项目">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -78,6 +73,7 @@
                         </button>
                     </form>
                 </div>
+
             </div>
         </li>
         {% endfor %}
@@ -165,11 +161,16 @@
         
         <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
             <div class="bg-white px-6 py-5 border-b border-gray-200">
-                <button class="edit-project-btn text-indigo-600 hover:text-indigo-900 p-2 rounded-md hover:bg-indigo-50"
-                        data-project-id="{{ projects.id }}"
-                        title="编辑项目">
-                    <i class="fas fa-edit"></i>
-                </button>
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900">
+                        <i class="fas fa-edit text-indigo-600 mr-2"></i>
+                        编辑项目
+                    </h3>
+                    <button onclick="document.getElementById('edit-project-modal').classList.add('hidden')" 
+                            class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
             
             <form id="edit-project-form" action="{{ url_for('dashboard_projects') }}" method="POST">
@@ -252,7 +253,7 @@
 </div>
 
 <script>
-    // 新版编辑项目函数
+    // 编辑项目函数
     function openEditModal(projectId) {
         // 通过AJAX获取项目数据
         fetch(`/api/projects/${projectId}`)
@@ -278,10 +279,22 @@
     
     // 使用事件委托处理编辑按钮点击
     document.addEventListener('click', function(e) {
-        if (e.target.closest('.edit-project-btn')) {
+        const editBtn = e.target.closest('.edit-project-btn');
+        if (editBtn) {
             e.preventDefault();
-            const projectId = e.target.closest('.edit-project-btn').dataset.projectId;
+            const projectId = editBtn.dataset.projectId;
             openEditModal(projectId);
+        }
+        
+        // 处理点击编辑按钮内的图标的情况
+        const icon = e.target.closest('.fa-edit');
+        if (icon) {
+            e.preventDefault();
+            const editBtn = icon.closest('.edit-project-btn');
+            if (editBtn) {
+                const projectId = editBtn.dataset.projectId;
+                openEditModal(projectId);
+            }
         }
     });
 </script>
