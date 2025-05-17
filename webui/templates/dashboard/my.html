@@ -40,8 +40,18 @@
                 </div>
                 
                 <div>
-                    <label for="dev_id" class="block text-sm font-medium text-gray-700">开发者ID</label>
-                    <input type="text" id="dev_id" value="{{ user.dev_id }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100" readonly>
+                    <div class="mt-4">
+                        <label for="dev_id" class="block text-sm font-medium text-gray-700">开发者ID</label>
+                        <div class="mt-1 flex rounded-md shadow-sm">
+                            <input type="text" id="dev_id" value="{{ current_user.dev_id }}" 
+                                   class="flex-1 block w-full rounded-none rounded-l-md border-gray-300 py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100" readonly>
+                            <button onclick="resetDevId()" 
+                                    class="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                重置
+                            </button>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">用于API调用的唯一标识符，重置后旧ID将失效</p>
+                    </div>
                 </div>
                 
                 <div>
@@ -56,6 +66,9 @@
             </div>
         </div>
         <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+            <a href="{{ url_for('change_password') }}" class="mr-4 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <i class="fas fa-key mr-2"></i> 修改密码
+            </a>
             <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 保存更改
             </button>
@@ -72,7 +85,6 @@ function previewAvatar(input) {
             if (avatarPreview.tagName === 'IMG') {
                 avatarPreview.src = e.target.result;
             } else {
-                // 如果是默认的div头像，替换为img
                 const newAvatar = document.createElement('img');
                 newAvatar.id = 'avatar-preview';
                 newAvatar.src = e.target.result;
@@ -84,6 +96,76 @@ function previewAvatar(input) {
         reader.readAsDataURL(input.files[0]);
         document.getElementById('avatar-filename').textContent = input.files[0].name;
     }
+}
+
+// 重置DevID函数
+function resetDevId() {
+    if (!confirm('确定要重置开发者ID吗？这将使所有使用旧ID的应用失效！')) {
+        return;
+    }
+    
+    // 显示加载状态
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> 处理中...';
+    btn.disabled = true;
+    
+    fetch("{{ url_for('reset_dev_id') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': "{{ csrf_token() }}"
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            // 更新显示的DevID
+            document.getElementById('dev_id').value = data.new_dev_id;
+            showFlashMessage(data.message, 'success');
+        } else {
+            showFlashMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        console.error('Error:', error);
+        showFlashMessage('请求失败，请检查网络连接', 'error');
+    });
+}
+
+// 显示浮动消息
+function showFlashMessage(message, type) {
+    const flashDiv = document.createElement('div');
+    flashDiv.className = `fixed top-4 right-4 rounded-md bg-${type}-50 p-4 shadow-lg z-50 flex items-start`;
+    flashDiv.innerHTML = `
+        <div class="flex-shrink-0">
+            <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle h-5 w-5 text-${type}-400"></i>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm font-medium text-${type}-800">${message}</p>
+        </div>
+    `;
+    
+    // 添加关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'ml-3 flex-shrink-0 text-gray-400 hover:text-gray-500';
+    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    closeBtn.onclick = () => flashDiv.remove();
+    flashDiv.appendChild(closeBtn);
+    
+    document.body.appendChild(flashDiv);
+    
+    // 5秒后自动消失
+    setTimeout(() => {
+        flashDiv.remove();
+    }, 5000);
 }
 </script>
 {% endblock %}
