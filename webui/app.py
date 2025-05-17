@@ -35,6 +35,7 @@ if app.config['MAIL_USE_SSL']:
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     dev_id = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    uid = db.Column(db.String(12), unique=True)  # 新增12位UID字段
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
@@ -43,9 +44,22 @@ class User(db.Model, UserMixin):
     email_verified = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
+    last_login_ip = db.Column(db.String(45))  # 新增IP字段
     is_admin = db.Column(db.Boolean, default=False)
     
     projects = db.relationship('Project', backref='owner', lazy=True)
+    
+    def __init__(self, **kwargs):
+        super(User, self).__init__(**kwargs)
+        if not self.uid:
+            self.uid = self.generate_uid()
+    
+    def generate_uid(self):
+        import random
+        import string
+        # 生成12位数字字母混合UID
+        chars = string.ascii_uppercase + string.digits
+        return ''.join(random.choice(chars) for _ in range(12))
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -85,7 +99,8 @@ def create_default_admin():
                 email='admin@example.com',
                 password_hash=generate_password_hash('admin123'),  # 默认密码
                 is_admin=True,
-                email_verified=True
+                email_verified=True,
+                uid="000000000001"
             )
             db.session.add(admin)
             db.session.commit()
@@ -123,16 +138,12 @@ def login():
             flash('您的邮箱尚未验证，请先验证邮箱后再登录', 'error')
             return redirect(url_for('login'))
         
+        # 更新登录时间和IP
         user.last_login = datetime.utcnow()
+        user.last_login_ip = request.remote_addr  # 记录IP
         db.session.commit()
         
-        session['user_id'] = user.id
-        session['username'] = user.username
-        session['dev_id'] = user.dev_id
-        
-        if remember:
-            session.permanent = True
-        
+        login_user(user, remember=remember)
         flash('登录成功', 'success')
         return redirect(url_for('dashboard_home'))
     

@@ -43,6 +43,7 @@
                         </button>
                         
                         <form action="{{ url_for('dashboard_projects') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="project_id" value="{{ project.id }}">
                             <button type="submit" class="bg-white rounded-md text-red-400 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
@@ -91,6 +92,7 @@
                     <h3 class="text-lg leading-6 font-medium text-gray-900">创建新项目</h3>
                     <div class="mt-2">
                         <form id="create-project-form" action="{{ url_for('dashboard_projects') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="action" value="create">
                             <div class="space-y-4">
                                 <div>
@@ -134,6 +136,7 @@
                     <h3 class="text-lg leading-6 font-medium text-gray-900">编辑项目</h3>
                     <div class="mt-2">
                         <form id="edit-project-form" action="{{ url_for('dashboard_projects') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="action" value="update">
                             <input type="hidden" name="project_id" id="edit-project-id">
                             <div class="space-y-4">
@@ -181,15 +184,37 @@
 </div>
 
 <script>
-function openEditModal(id, name, description, version, url, announcement, forceUpdate) {
-    document.getElementById('edit-project-id').value = id;
-    document.getElementById('edit-name').value = name || '';
-    document.getElementById('edit-description').value = description || '';
-    document.getElementById('edit-latest-version').value = version || '';
-    document.getElementById('edit-download-url').value = url || '';
-    document.getElementById('edit-announcement').value = announcement || '';
-    document.getElementById('edit-force-update').checked = forceUpdate === 'true' || forceUpdate === true;
-    document.getElementById('edit-project-modal').classList.remove('hidden');
-}
-</script>
+    function openEditModal(id, name, description, version, url, announcement, forceUpdate) {
+        // 确保模态框显示
+        document.getElementById('edit-project-modal').classList.remove('hidden');
+        
+        // 填充表单数据
+        document.getElementById('edit-project-id').value = id;
+        document.getElementById('edit-name').value = name || '';
+        document.getElementById('edit-description').value = description || '';
+        document.getElementById('edit-latest-version').value = version || '';
+        document.getElementById('edit-download-url').value = url || '';
+        document.getElementById('edit-announcement').value = announcement || '';
+        document.getElementById('edit-force-update').checked = forceUpdate === 'true' || forceUpdate === true;
+        
+        // 调试输出
+        console.log('Editing project:', {
+            id, name, description, version, url, announcement, forceUpdate
+        });
+    }
+    
+    // 确保编辑按钮正确绑定
+    document.addEventListener('DOMContentLoaded', function() {
+        // 监听所有编辑按钮点击事件
+        document.querySelectorAll('[onclick^="openEditModal"]').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                // 从按钮的onclick属性中提取参数
+                const argsString = button.getAttribute('onclick').replace('openEditModal(', '').replace(')', '');
+                const args = argsString.split(',').map(arg => arg.trim().replace(/'/g, ''));
+                openEditModal(...args);
+            });
+        });
+    });
+    </script>
 {% endblock %}

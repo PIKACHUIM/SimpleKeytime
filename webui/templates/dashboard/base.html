@@ -34,8 +34,18 @@
                     {% endif %}
                 </div>
                 <div>
-                    <p class="text-sm font-medium text-gray-900">{{ current_user.nickname or current_user.username }}</p>
-                    <p class="text-xs text-gray-500">开发者ID: {{ current_user.dev_id }}</p>
+                    <p class="text-sm font-medium text-gray-900">
+                        {{ current_user.nickname or current_user.username }}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        UID: {{ current_user.uid }}<br>
+                        {% if current_user.last_login %}
+                            上次登录: {{ current_user.last_login.strftime('%Y-%m-%d %H:%M') }}<br>
+                            IP: {{ current_user.last_login_ip or '未知' }}
+                        {% else %}
+                            首次登录
+                        {% endif %}
+                    </p>
                 </div>
             </div>
         </div>
