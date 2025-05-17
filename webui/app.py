@@ -84,7 +84,8 @@ def create_default_admin():
                 username='admin',
                 email='admin@example.com',
                 password_hash=generate_password_hash('admin123'),  # 默认密码
-                is_admin=True
+                is_admin=True,
+                email_verified=True
             )
             db.session.add(admin)
             db.session.commit()
