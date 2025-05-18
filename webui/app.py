@@ -3546,4 +3546,4 @@ if __name__ == '__main__':
         update_existing_users_uid()
     os.makedirs(os.path.join(app.root_path, 'static', 'uploads'), exist_ok=True)
     app.register_blueprint(api_v1)
-    app.run(debug=True, port=80)
+    app.run(debug=True, port=5000)

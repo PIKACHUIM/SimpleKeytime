@@ -26,4 +26,4 @@ class Config:
     # 应用配置
     APP_NAME = 'SimpleKeytime'
     APP_DESCRIPTION = '简单易用的软件授权管理系统'
-    APP_URL = os.getenv('APP_URL', 'http://localhost')
+    APP_URL = os.getenv('APP_URL', 'http://localhost:5000')
