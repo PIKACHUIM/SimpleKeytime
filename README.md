@@ -48,11 +48,14 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 
 # 配置环境变量
-cp .env.example .env
+vim config.py
 # 编辑.env文件配置您的设置
 ```
+### 运行SimpleKeytime
+```bash
+python3 app.py
 
-### 初始化数据库
+### 初始化数据库（可选）
 
 ```bash
 # 创建数据库表
@@ -62,13 +65,13 @@ flask db upgrade
 flask create-admin
 ```
 
-### 运行开发服务器
+### 运行开发服务器（可选）
 
 ```bash
 flask run
 ```
 
-访问 [http://localhost:5000](http://localhost:5000) 开始使用
+访问 [http://localhost:5000](http://localhost:5000) 开始使用（可自行修改地址）
 
 ## 🖥️ 系统架构
 
@@ -109,6 +112,10 @@ simplekeytime/
    - 启用HTTPS
    - 设置强SECRET_KEY
    - 限制管理后台访问
+
+## API开发文档
+- DeepWiki AI文档：[DeepWiki/SimpleKeytime](https://deepwiki.com/SimpleHac/SimpleKeytime)
+- SimpleHac官方文档：[https://skt.simplehac.cn/v1/api/doc](https://skt.simplehac.cn/v1/api/doc)
 
 ## 📄 开源协议
 
