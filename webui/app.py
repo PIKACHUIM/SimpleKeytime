@@ -2309,6 +2309,1222 @@ def unban_license_key(app_id):
             'message': 'Internal server error'
         }), 500
 
+@api_v1.route('/project-users/<app_id>/ifRegister', methods=['GET'])
+def check_user_registration(app_id):
+    """
+    检查用户注册状态API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: username
+        in: query
+        type: string
+        description: 用户名
+      - name: uid
+        in: query
+        type: string
+        description: 用户UID
+      - name: email
+        in: query
+        type: string
+        description: 用户邮箱
+    responses:
+      200:
+        description: 用户注册状态
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: string
+              example: 已注册
+      400:
+        description: 参数错误
+      404:
+        description: 用户未找到
+    """
+    username = request.args.get('username')
+    uid = request.args.get('uid')
+    email = request.args.get('email')
+    
+    if not (username or uid or email):
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供username、uid或email中的一个参数'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    query = ProjectUser.query.filter_by(project_id=project.id)
+    
+    if username:
+        user = query.filter_by(username=username).first()
+    elif uid:
+        user = query.filter_by(uid=uid).first()
+    else:
+        user = query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({
+            'status': 'success',
+            'data': '未找到'
+        })
+    
+    if not user.is_active:
+        return jsonify({
+            'status': 'success',
+            'data': '邮箱未验证'
+        })
+    
+    return jsonify({
+        'status': 'success',
+        'data': '已注册'
+    })
+
+@api_v1.route('/project-users/<app_id>/alldata', methods=['GET'])
+def get_user_all_data(app_id):
+    """
+    获取用户完整信息API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: query
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: user_id
+        in: query
+        type: integer
+        description: 用户ID
+      - name: username
+        in: query
+        type: string
+        description: 用户名
+      - name: uid
+        in: query
+        type: string
+        description: 用户UID
+      - name: email
+        in: query
+        type: string
+        description: 用户邮箱
+    responses:
+      200:
+        description: 用户完整信息
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 1
+                uid:
+                  type: string
+                  example: "123456789012"
+                username:
+                  type: string
+                  example: "testuser"
+                email:
+                  type: string
+                  example: "user@example.com"
+                nickname:
+                  type: string
+                  example: "测试用户"
+                signature:
+                  type: string
+                  example: "个性签名"
+                avatar:
+                  type: string
+                  example: "/static/uploads/avatar.jpg"
+                is_active:
+                  type: boolean
+                  example: true
+                is_banned:
+                  type: boolean
+                  example: false
+                created_at:
+                  type: string
+                  format: date-time
+                  example: "2023-01-01T00:00:00"
+      400:
+        description: 参数错误
+      403:
+        description: 无权限访问
+      404:
+        description: 用户未找到
+    """
+    dev_id = request.args.get('dev_id')
+    user_id = request.args.get('user_id')
+    username = request.args.get('username')
+    uid = request.args.get('uid')
+    email = request.args.get('email')
+    
+    if not dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供dev_id'
+        }), 400
+    
+    if not (user_id or username or uid or email):
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供user_id、username、uid或email中的一个参数'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    if project.owner.dev_id != dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '无权限访问'
+        }), 403
+    
+    query = ProjectUser.query.filter_by(project_id=project.id)
+    
+    if user_id:
+        user = query.filter_by(id=user_id).first()
+    elif username:
+        user = query.filter_by(username=username).first()
+    elif uid:
+        user = query.filter_by(uid=uid).first()
+    else:
+        user = query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({
+            'status': 'error',
+            'message': '用户未找到'
+        }), 404
+    
+    return jsonify({
+        'status': 'success',
+        'data': {
+            'id': user.id,
+            'uid': user.uid,
+            'username': user.username,
+            'email': user.email,
+            'nickname': user.nickname,
+            'signature': user.signature,
+            'avatar': user.avatar,
+            'is_active': user.is_active,
+            'is_banned': user.is_banned,
+            'created_at': user.created_at.isoformat()
+        }
+    })
+
+@api_v1.route('/project-users/<app_id>/registerDate', methods=['GET'])
+def get_user_register_date(app_id):
+    """
+    获取用户注册日期API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: query
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: user_id
+        in: query
+        type: integer
+        description: 用户ID
+      - name: username
+        in: query
+        type: string
+        description: 用户名
+      - name: uid
+        in: query
+        type: string
+        description: 用户UID
+      - name: email
+        in: query
+        type: string
+        description: 用户邮箱
+    responses:
+      200:
+        description: 用户注册日期
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: string
+              format: date-time
+              example: "2023-01-01T00:00:00"
+      400:
+        description: 参数错误
+      403:
+        description: 无权限访问
+      404:
+        description: 用户未找到
+    """
+    dev_id = request.args.get('dev_id')
+    user_id = request.args.get('user_id')
+    username = request.args.get('username')
+    uid = request.args.get('uid')
+    email = request.args.get('email')
+    
+    if not dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供dev_id'
+        }), 400
+    
+    if not (user_id or username or uid or email):
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供user_id、username、uid或email中的一个参数'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    if project.owner.dev_id != dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '无权限访问'
+        }), 403
+    
+    query = ProjectUser.query.filter_by(project_id=project.id)
+    
+    if user_id:
+        user = query.filter_by(id=user_id).first()
+    elif username:
+        user = query.filter_by(username=username).first()
+    elif uid:
+        user = query.filter_by(uid=uid).first()
+    else:
+        user = query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({
+            'status': 'error',
+            'message': '用户未找到'
+        }), 404
+    
+    return jsonify({
+        'status': 'success',
+        'data': user.created_at.isoformat()
+    })
+
+@api_v1.route('/project-users/<app_id>/lastLogin', methods=['GET'])
+def get_user_last_login(app_id):
+    """
+    获取用户最后登录信息API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: query
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: user_id
+        in: query
+        type: integer
+        description: 用户ID
+      - name: username
+        in: query
+        type: string
+        description: 用户名
+      - name: uid
+        in: query
+        type: string
+        description: 用户UID
+      - name: email
+        in: query
+        type: string
+        description: 用户邮箱
+    responses:
+      200:
+        description: 用户最后登录信息
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                last_login:
+                  type: string
+                  format: date-time
+                  example: "2023-01-01T00:00:00"
+                last_login_ip:
+                  type: string
+                  example: "127.0.0.1"
+      400:
+        description: 参数错误
+      403:
+        description: 无权限访问
+      404:
+        description: 用户未找到
+    """
+    dev_id = request.args.get('dev_id')
+    user_id = request.args.get('user_id')
+    username = request.args.get('username')
+    uid = request.args.get('uid')
+    email = request.args.get('email')
+    
+    if not dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供dev_id'
+        }), 400
+    
+    if not (user_id or username or uid or email):
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供user_id、username、uid或email中的一个参数'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    if project.owner.dev_id != dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '无权限访问'
+        }), 403
+    
+    query = ProjectUser.query.filter_by(project_id=project.id)
+    
+    if user_id:
+        user = query.filter_by(id=user_id).first()
+    elif username:
+        user = query.filter_by(username=username).first()
+    elif uid:
+        user = query.filter_by(uid=uid).first()
+    else:
+        user = query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({
+            'status': 'error',
+            'message': '用户未找到'
+        }), 404
+    
+    return jsonify({
+        'status': 'success',
+        'data': {
+            'last_login': user.last_login.isoformat() if user.last_login else None,
+            'last_login_ip': user.last_login_ip
+        }
+    })
+
+@api_v1.route('/project-users/<app_id>/ban', methods=['POST'])
+def ban_user(app_id):
+    """
+    封禁用户API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: user_id
+        in: formData
+        type: integer
+        description: 用户ID
+      - name: username
+        in: formData
+        type: string
+        description: 用户名
+      - name: uid
+        in: formData
+        type: string
+        description: 用户UID
+      - name: email
+        in: formData
+        type: string
+        description: 用户邮箱
+    responses:
+      200:
+        description: 封禁结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                username:
+                  type: string
+                  example: "testuser"
+      400:
+        description: 参数错误
+      403:
+        description: 无权限访问
+      404:
+        description: 用户未找到
+    """
+    dev_id = request.form.get('dev_id')
+    user_id = request.form.get('user_id')
+    username = request.form.get('username')
+    uid = request.form.get('uid')
+    email = request.form.get('email')
+    
+    if not dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供dev_id'
+        }), 400
+    
+    if not (user_id or username or uid or email):
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供user_id、username、uid或email中的一个参数'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    if project.owner.dev_id != dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '无权限访问'
+        }), 403
+    
+    query = ProjectUser.query.filter_by(project_id=project.id)
+    
+    if user_id:
+        user = query.filter_by(id=user_id).first()
+    elif username:
+        user = query.filter_by(username=username).first()
+    elif uid:
+        user = query.filter_by(uid=uid).first()
+    else:
+        user = query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({
+            'status': 'error',
+            'message': '用户未找到'
+        }), 404
+    
+    try:
+        user.is_banned = True
+        user.is_active = False
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'username': user.username
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"封禁用户失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': '封禁用户失败'
+        }), 500
+
+@api_v1.route('/project-users/<app_id>/unban', methods=['POST'])
+def unban_user(app_id):
+    """
+    解封用户API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: user_id
+        in: formData
+        type: integer
+        description: 用户ID
+      - name: username
+        in: formData
+        type: string
+        description: 用户名
+      - name: uid
+        in: formData
+        type: string
+        description: 用户UID
+      - name: email
+        in: formData
+        type: string
+        description: 用户邮箱
+    responses:
+      200:
+        description: 解封结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                username:
+                  type: string
+                  example: "testuser"
+      400:
+        description: 参数错误
+      403:
+        description: 无权限访问
+      404:
+        description: 用户未找到
+    """
+    dev_id = request.form.get('dev_id')
+    user_id = request.form.get('user_id')
+    username = request.form.get('username')
+    uid = request.form.get('uid')
+    email = request.form.get('email')
+    
+    if not dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供dev_id'
+        }), 400
+    
+    if not (user_id or username or uid or email):
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供user_id、username、uid或email中的一个参数'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    if project.owner.dev_id != dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '无权限访问'
+        }), 403
+    
+    query = ProjectUser.query.filter_by(project_id=project.id)
+    
+    if user_id:
+        user = query.filter_by(id=user_id).first()
+    elif username:
+        user = query.filter_by(username=username).first()
+    elif uid:
+        user = query.filter_by(uid=uid).first()
+    else:
+        user = query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({
+            'status': 'error',
+            'message': '用户未找到'
+        }), 404
+    
+    try:
+        user.is_banned = False
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'username': user.username
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"解封用户失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': '解封用户失败'
+        }), 500
+
+@api_v1.route('/project-users/<app_id>/delete', methods=['POST'])
+def delete_user(app_id):
+    """
+    删除用户API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: user_id
+        in: formData
+        type: integer
+        description: 用户ID
+      - name: username
+        in: formData
+        type: string
+        description: 用户名
+      - name: uid
+        in: formData
+        type: string
+        description: 用户UID
+      - name: email
+        in: formData
+        type: string
+        description: 用户邮箱
+    responses:
+      200:
+        description: 删除结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                username:
+                  type: string
+                  example: "testuser"
+      400:
+        description: 参数错误
+      403:
+        description: 无权限访问
+      404:
+        description: 用户未找到
+    """
+    dev_id = request.form.get('dev_id')
+    user_id = request.form.get('user_id')
+    username = request.form.get('username')
+    uid = request.form.get('uid')
+    email = request.form.get('email')
+    
+    if not dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供dev_id'
+        }), 400
+    
+    if not (user_id or username or uid or email):
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供user_id、username、uid或email中的一个参数'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    if project.owner.dev_id != dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '无权限访问'
+        }), 403
+    
+    query = ProjectUser.query.filter_by(project_id=project.id)
+    
+    if user_id:
+        user = query.filter_by(id=user_id).first()
+    elif username:
+        user = query.filter_by(username=username).first()
+    elif uid:
+        user = query.filter_by(uid=uid).first()
+    else:
+        user = query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({
+            'status': 'error',
+            'message': '用户未找到'
+        }), 404
+    
+    try:
+        username = user.username
+        db.session.delete(user)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'username': username
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"删除用户失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': '删除用户失败'
+        }), 500
+
+@api_v1.route('/project-users/<app_id>/sendReset', methods=['POST'])
+def send_reset_email(app_id):
+    """
+    发送密码重置邮件API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: user_id
+        in: formData
+        type: integer
+        description: 用户ID
+      - name: username
+        in: formData
+        type: string
+        description: 用户名
+      - name: uid
+        in: formData
+        type: string
+        description: 用户UID
+      - name: email
+        in: formData
+        type: string
+        description: 用户邮箱
+    responses:
+      200:
+        description: 发送结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                email:
+                  type: string
+                  example: "user@example.com"
+      400:
+        description: 参数错误
+      403:
+        description: 无权限访问
+      404:
+        description: 用户未找到
+    """
+    dev_id = request.form.get('dev_id')
+    user_id = request.form.get('user_id')
+    username = request.form.get('username')
+    uid = request.form.get('uid')
+    email = request.form.get('email')
+    
+    if not dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供dev_id'
+        }), 400
+    
+    if not (user_id or username or uid or email):
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供user_id、username、uid或email中的一个参数'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    if project.owner.dev_id != dev_id:
+        return jsonify({
+            'status': 'error',
+            'message': '无权限访问'
+        }), 403
+    
+    query = ProjectUser.query.filter_by(project_id=project.id)
+    
+    if user_id:
+        user = query.filter_by(id=user_id).first()
+    elif username:
+        user = query.filter_by(username=username).first()
+    elif uid:
+        user = query.filter_by(uid=uid).first()
+    else:
+        user = query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({
+            'status': 'error',
+            'message': '用户未找到'
+        }), 404
+    
+    try:
+        if send_project_user_reset_email(user, project):
+            return jsonify({
+                'status': 'success',
+                'data': {
+                    'success': True,
+                    'email': user.email
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': '发送重置邮件失败'
+            }), 500
+    except Exception as e:
+        app.logger.error(f"发送重置邮件失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': '发送重置邮件失败'
+        }), 500
+
+@api_v1.route('/project-users/<app_id>/login', methods=['POST'])
+def user_login(app_id):
+    """
+    用户登录API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: username
+        in: formData
+        type: string
+        required: true
+        description: 用户名
+      - name: password
+        in: formData
+        type: string
+        required: true
+        description: 密码
+    responses:
+      200:
+        description: 登录结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                user_id:
+                  type: integer
+                  example: 1
+                username:
+                  type: string
+                  example: "testuser"
+                last_login:
+                  type: string
+                  format: date-time
+                  example: "2023-01-01T00:00:00"
+                last_login_ip:
+                  type: string
+                  example: "127.0.0.1"
+      400:
+        description: 参数错误
+      401:
+        description: 认证失败
+      403:
+        description: 用户被封禁
+      404:
+        description: 用户未找到
+    """
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    if not username or not password:
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供username和password'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    user = ProjectUser.query.filter_by(
+        project_id=project.id,
+        username=username
+    ).first()
+    
+    if not user:
+        return jsonify({
+            'status': 'error',
+            'message': '用户未找到'
+        }), 404
+    
+    if user.is_banned:
+        return jsonify({
+            'status': 'error',
+            'message': '用户已被封禁'
+        }), 403
+    
+    if not user.check_password(password):
+        return jsonify({
+            'status': 'error',
+            'message': '用户名或密码错误'
+        }), 401
+    
+    try:
+        # 更新最后登录信息
+        user.last_login = datetime.utcnow()
+        user.last_login_ip = request.remote_addr
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'user_id': user.id,
+                'username': user.username,
+                'last_login': user.last_login.isoformat(),
+                'last_login_ip': user.last_login_ip
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"登录失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': '登录失败'
+        }), 500
+
+@api_v1.route('/project-users/<app_id>/register', methods=['POST'])
+def user_register(app_id):
+    """
+    用户注册API
+    ---
+    tags:
+      - 用户管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: username
+        in: formData
+        type: string
+        required: true
+        description: 用户名
+      - name: email
+        in: formData
+        type: string
+        required: true
+        description: 邮箱
+      - name: password
+        in: formData
+        type: string
+        required: true
+        description: 密码
+      - name: nickname
+        in: formData
+        type: string
+        description: 昵称
+      - name: signature
+        in: formData
+        type: string
+        description: 个性签名
+    responses:
+      200:
+        description: 注册结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                user_id:
+                  type: integer
+                  example: 1
+                username:
+                  type: string
+                  example: "testuser"
+                email:
+                  type: string
+                  example: "user@example.com"
+      400:
+        description: 参数错误
+      409:
+        description: 用户名或邮箱已存在
+    """
+    username = request.form.get('username')
+    email = request.form.get('email')
+    password = request.form.get('password')
+    nickname = request.form.get('nickname')
+    signature = request.form.get('signature')
+    
+    if not username or not email or not password:
+        return jsonify({
+            'status': 'error',
+            'message': '必须提供username、email和password'
+        }), 400
+    
+    project = Project.query.filter_by(app_id=app_id).first()
+    if not project:
+        return jsonify({
+            'status': 'error',
+            'message': '项目不存在'
+        }), 404
+    
+    # 检查用户名和邮箱是否已存在
+    if ProjectUser.query.filter_by(project_id=project.id, username=username).first():
+        return jsonify({
+            'status': 'error',
+            'message': '用户名已存在'
+        }), 409
+    
+    if ProjectUser.query.filter_by(project_id=project.id, email=email).first():
+        return jsonify({
+            'status': 'error',
+            'message': '邮箱已被使用'
+        }), 409
+    
+    try:
+        user = ProjectUser(
+            project_id=project.id,
+            username=username,
+            email=email,
+            nickname=nickname if nickname else None,
+            signature=signature if signature else None,
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        
+        # 发送激活邮件
+        send_project_user_reset_email(user, project)
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'user_id': user.id,
+                'username': user.username,
+                'email': user.email
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"注册失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': '注册失败'
+        }), 500
+
 # 错误处理
 @app.errorhandler(404)
 def page_not_found(e):
