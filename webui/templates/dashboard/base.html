@@ -129,4 +129,13 @@
         </main>
     </div>
 </div>
+{% block extra_js %}
+{% endblock %}
+{% block scripts %}
+<script>
+    function markdownFilter(content) {
+        return marked.parse(content || '');
+    }
+</script>
+{% endblock %}
 {% endblock %}

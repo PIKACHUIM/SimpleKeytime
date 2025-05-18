@@ -3,6 +3,65 @@
 {% block dashboard_title %}控制台主页{% endblock %}
 
 {% block dashboard_content %}
+<style>
+    /* 确保图表容器正确伸缩 */
+    .min-h-0 {
+        min-height: 0;
+    }
+    
+    /* 自定义滚动条 */
+    .overflow-y-auto {
+        scrollbar-width: thin;
+        scrollbar-color: #c1c1c1 #f1f1f1;
+    }
+    .overflow-y-auto::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    .overflow-y-auto::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    .overflow-y-auto::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+    /* 公告内容样式 */
+    .markdown-content p {
+        margin-bottom: 0.75rem;
+        line-height: 1.5;
+    }
+    .markdown-content ul, 
+    .markdown-content ol {
+        margin-left: 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+    .markdown-content img {
+        max-width: 100%;
+        height: auto;
+        margin: 0.5rem 0;
+        border-radius: 0.25rem;
+    }
+    .markdown-content pre {
+        background: #f5f5f5;
+        padding: 0.75rem;
+        border-radius: 0.25rem;
+        overflow-x: auto;
+        margin-bottom: 0.75rem;
+    }
+    .markdown-content code {
+        font-family: monospace;
+        background: #f5f5f5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.2rem;
+        font-size: 0.9em;
+    }
+</style>
+
 <div class="mb-8">
     <h2 class="text-2xl font-semibold text-gray-900">欢迎回来, {{ user.nickname or user.username }}!</h2>
     <p class="mt-1 text-sm text-gray-500">这是您的SimpleKeytime控制台，您可以在这里管理您的软件授权和更新。</p>
@@ -29,8 +88,8 @@
                 <i class="fas fa-code text-xl"></i>
             </div>
             <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500">本月API调用</p>
-                <p class="text-2xl font-semibold text-gray-900">1,234</p>
+                <p class="text-sm font-medium text-gray-500">API调用总数</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ api_calls_count }}</p>
             </div>
         </div>
     </div>
@@ -43,39 +102,72 @@
             </div>
             <div class="ml-4">
                 <p class="text-sm font-medium text-gray-500">活跃授权</p>
-                <p class="text-2xl font-semibold text-gray-900">567</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ active_licenses }}</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- 公告 -->
-<div class="bg-white rounded-lg shadow overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-medium text-gray-900">系统公告</h3>
-    </div>
-    <div class="divide-y divide-gray-200">
-        {% for announcement in announcements %}
-        <div class="px-6 py-4">
-            <div class="flex items-start">
-                <div class="flex-shrink-0 pt-1">
-                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <i class="fas fa-bullhorn text-blue-600"></i>
-                    </div>
-                </div>
-                <div class="ml-4">
-                    <h4 class="text-sm font-medium text-gray-900">{{ announcement.title }}</h4>
-                    <p class="mt-1 text-sm text-gray-500">{{ announcement.content }}</p>
-                    <p class="mt-2 text-xs text-gray-400">{{ announcement.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+<div class="flex flex-col lg:flex-row gap-6 mb-8 h-[500px]">
+    <!-- 左侧图表区 -->
+    <div class="flex-1 flex flex-col lg:flex-row gap-6 h-full">
+        <!-- API调用图表 -->
+        <div class="flex-1 bg-white p-4 rounded-lg shadow flex flex-col" style="height: 300px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-sm font-medium text-gray-900">API调用统计</h3>
+                <div class="flex space-x-1">
+                    <button onclick="loadApiChartData('24h')" class="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200">24小时</button>
+                    <button onclick="loadApiChartData('7d')" class="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200">7天</button>
+                    <button onclick="loadApiChartData('30d')" class="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200">30天</button>
                 </div>
             </div>
+            <div class="flex-1 min-h-0">
+                <canvas id="apiChart"></canvas>
+            </div>
         </div>
-        {% else %}
-        <div class="px-6 py-8 text-center">
-            <i class="fas fa-info-circle text-gray-400 text-4xl mb-3"></i>
-            <p class="text-gray-500">暂无公告</p>
+        
+        <!-- 活跃授权图表 -->
+        <div class="flex-1 bg-white p-4 rounded-lg shadow flex flex-col" style="height: 300px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-sm font-medium text-gray-900">活跃授权统计</h3>
+                <div class="flex space-x-1">
+                    <button onclick="loadLicenseChartData('24h')" class="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200">24小时</button>
+                    <button onclick="loadLicenseChartData('7d')" class="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200">7天</button>
+                    <button onclick="loadLicenseChartData('30d')" class="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200">30天</button>
+                </div>
+            </div>
+            <div class="flex-1 min-h-0">
+                <canvas id="licenseChart"></canvas>
+            </div>
         </div>
-        {% endfor %}
+    </div>
+    <!-- 右侧公告区 -->
+    <div class="lg:w-1/3 bg-white rounded-lg shadow flex flex-col h-full" style="height: 300px;">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">系统公告</h3>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4">
+            {% for announcement in announcements %}
+            <div class="mb-4 pb-4 border-b border-gray-200 last:border-0">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 pt-1">
+                        <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <i class="fas fa-bullhorn text-blue-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h4 class="text-sm font-medium text-gray-900">{{ announcement.title }}</h4>
+                        <div class="mt-1 text-sm text-gray-500 markdown-content">
+                            {{ announcement.content }}
+                        </div>
+                        <p class="mt-2 text-xs text-gray-400">{{ announcement.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="markdown-content" id="notice-md"></div>
+            {% endfor %}
+        </div>
     </div>
 </div>
 
@@ -99,14 +191,178 @@
                 <span class="text-sm font-medium">生成授权密钥</span>
             </div>
         </a>
-        <a href="#" class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-indigo-300 hover:shadow-md transition duration-150">
+        <button onclick="generateReport()" class="bg-white p-4 rounded-lg shadow border border-gray-200 hover:border-indigo-300 hover:shadow-md transition duration-150">
             <div class="flex items-center">
                 <div class="p-2 rounded-md bg-purple-100 text-purple-600 mr-3">
                     <i class="fas fa-chart-line"></i>
                 </div>
                 <span class="text-sm font-medium">查看统计报告</span>
             </div>
-        </a>
+        </button>
     </div>
 </div>
+
+<script src="https://cdn.jsdmirror.com/npm/chart.js"></script>
+<script src="https://cdn.jsdmirror.com/npm/marked/marked.min.js"></script>
+<script>
+    // 生成报告
+    function generateReport() {
+        fetch('/dashboard/generate-report', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('报告已生成，链接10分钟内有效');
+                // 在新标签页打开报告
+                window.open(data.report_url, '_blank');
+                
+            } else {
+                alert('生成报告失败');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('生成报告时出错');
+        });
+    }
+
+    // 图表配置
+const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            display: false
+        },
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) {
+                        label += ': ';
+                    }
+                    if (context.parsed.y !== null) {
+                        if (context.chart.id == 'licenseChart') {
+                            label += `活跃授权数: ${context.parsed.y}`;
+                        } else {
+                            label += `API请求数: ${context.parsed.y}`;
+                        }
+                    }
+                    return label;
+                }
+            }
+        }
+    },
+    scales: {
+        y: {
+            beginAtZero: true,
+            ticks: {
+                precision: 0
+            }
+        }
+    }
+};
+
+// 初始化图表
+const apiChart = new Chart(
+    document.getElementById('apiChart'),
+    {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: chartOptions
+    }
+);
+
+const licenseChart = new Chart(
+    document.getElementById('licenseChart'),
+    {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: chartOptions
+    }
+);
+
+// 加载API图表数据
+function loadApiChartData(range) {
+    fetch(`/dashboard/api-stats?type=api&range=${range}`)
+        .then(res => res.json())
+        .then(data => {
+            apiChart.data.labels = data.labels;
+            apiChart.data.datasets[0].data = data.data;
+            apiChart.update();
+        })
+        .catch(error => {
+            console.error('Error loading API chart data:', error);
+            // 默认数据
+            apiChart.data.labels = Array.from({length: 24}, (_, i) => `${i}:00`);
+            apiChart.data.datasets[0].data = Array(24).fill(0);
+            apiChart.update();
+        });
+}
+
+// 加载授权图表数据
+function loadLicenseChartData(range) {
+    fetch(`/dashboard/api-stats?type=license&range=${range}`)
+        .then(res => res.json())
+        .then(data => {
+            licenseChart.data.labels = data.labels;
+            licenseChart.data.datasets[0].data = data.data;
+            licenseChart.update();
+        })
+        .catch(error => {
+            console.error('Error loading license chart data:', error);
+            // 默认数据
+            licenseChart.data.labels = Array.from({length: 24}, (_, i) => `${i}:00`);
+            licenseChart.data.datasets[0].data = Array(24).fill(0);
+            licenseChart.update();
+        });
+}
+
+// 加载notice.md
+fetch('/static/notice.md')
+    .then(response => {
+        if (!response.ok) throw new Error('Notice file not found');
+        return response.text();
+    })
+    .then(text => {
+        const noticeContainer = document.getElementById('notice-md');
+        if (noticeContainer) {
+            noticeContainer.innerHTML = marked.parse(text);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading notice.md:', error);
+        const noticeContainer = document.getElementById('notice-md');
+        if (noticeContainer) {
+            noticeContainer.innerHTML = '<p class="text-gray-500">暂无系统公告</p>';
+        }
+    });
+
+// 默认加载24小时数据
+loadApiChartData('24h');
+loadLicenseChartData('24h');
+</script>
 {% endblock %}

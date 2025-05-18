@@ -1,5 +1,5 @@
 from argparse import _get_action_name
-from flask import Blueprint, Flask, jsonify, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, Flask, abort, jsonify, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail, Message
@@ -7,6 +7,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
 import pytz
 import uuid
 import os
@@ -74,14 +75,14 @@ class User(db.Model, UserMixin):
     
     def generate_reset_code(self):
         self.reset_code = ''.join(random.choice(string.digits) for _ in range(6))
-        self.reset_code_expires = datetime.utcnow() + timedelta(minutes=30)
+        self.reset_code_expires = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None) + timedelta(minutes=30)
         db.session.commit()
         return self.reset_code
     
     def verify_reset_code(self, code):
         if not self.reset_code or not self.reset_code_expires:
             return False
-        return self.reset_code == code and datetime.utcnow() < self.reset_code_expires
+        return self.reset_code == code and datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None) < self.reset_code_expires
 
 
 class LicenseKey(db.Model):
@@ -108,7 +109,7 @@ class LicenseKey(db.Model):
             return False
         # 统一时区处理
         expiry_time = self.expiry_time.astimezone(pytz.UTC) if self.expiry_time.tzinfo else self.expiry_time.replace(tzinfo=None)
-        now = datetime.now(pytz.UTC) if self.expiry_time.tzinfo else datetime.utcnow()
+        now = datetime.now(pytz.UTC) if self.expiry_time.tzinfo else datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
         return now > expiry_time
 
 class Project(db.Model):
@@ -120,8 +121,8 @@ class Project(db.Model):
     download_url = db.Column(db.String(255))
     announcement = db.Column(db.Text)
     force_update = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Shanghai')))
-    updated_at = db.Column(db.DateTime, onupdate=datetime.now(pytz.timezone('Asia/Shanghai')))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, onupdate=datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     license_keys = db.relationship('LicenseKey', back_populates='project', cascade='all, delete-orphan')
 
@@ -169,14 +170,32 @@ class ProjectUser(db.Model):
     
     def generate_reset_token(self):
         self.reset_token = str(uuid.uuid4())
-        self.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        self.reset_token_expires = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None) + timedelta(hours=1)
         db.session.commit()
         return self.reset_token
     
     def verify_reset_token(self, token):
         if not self.reset_token or not self.reset_token_expires:
             return False
-        return self.reset_token == token and datetime.utcnow() < self.reset_token_expires
+        return self.reset_token == token and datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None) < self.reset_token_expires
+
+class ApiCallLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    endpoint = db.Column(db.String(100), nullable=False)
+    called_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ip_address = db.Column(db.String(45))
+
+    user = db.relationship('User', backref=db.backref('api_calls', lazy=True))
+
+class Report(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    token = db.Column(db.String(64), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    
+    user = db.relationship('User', backref=db.backref('reports', lazy=True))
 
 # 上下文处理器
 @app.context_processor
@@ -265,6 +284,28 @@ def send_reset_code_email(user):
         app.logger.error(f"发送验证码失败: {e}")
         return False
 
+def cleanup_expired_reports():
+    with app.app_context():
+        expired = Report.query.filter(Report.expires_at < datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)).all()
+        for report in expired:
+            db.session.delete(report)
+        db.session.commit()
+
+@app.after_request
+def log_api_call(response):
+    if request.path.startswith('/v1/api/'):
+        try:
+            api_call = ApiCallLog(
+                user_id=current_user.id if current_user.is_authenticated else None,
+                endpoint=request.path,
+                ip_address=request.remote_addr
+            )
+            db.session.add(api_call)
+            db.session.commit()
+        except Exception as e:
+            app.logger.error(f"Failed to log API call: {e}")
+    return response
+
 # 路由 - 认证
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -291,7 +332,7 @@ def login():
         
         if user.email_verified:
         # 登录用户
-            user.last_login = datetime.now(pytz.timezone('Asia/Shanghai'))
+            user.last_login = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
             user.last_login_ip = request.remote_addr
             db.session.commit()
             login_user(user, remember=remember)
@@ -493,10 +534,25 @@ def dashboard_home():
                                     .limit(5).all()
     projects_count = Project.query.filter_by(user_id=current_user.id).count()
     
+    # 获取活跃授权数量
+    active_licenses = LicenseKey.query.join(Project)\
+        .filter(
+            Project.user_id == current_user.id,
+            LicenseKey.is_active == True,
+            LicenseKey.activation_time.isnot(None),
+            LicenseKey.expiry_time > datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
+        ).count()
+    
+    # 获取API调用总数
+    api_calls_count = ApiCallLog.query.filter_by(user_id=current_user.id).count()
+    
     return render_template('dashboard/home.html',
                          announcements=announcements,
                          projects_count=projects_count,
-                         user=current_user)
+                         active_licenses=active_licenses,
+                         api_calls_count=api_calls_count,
+                         user=current_user,
+                         datetime=datetime)
 
 @app.route('/dashboard/projects', methods=['GET', 'POST'])
 @login_required
@@ -554,7 +610,7 @@ def dashboard_projects():
                     project.download_url = request.form.get('download_url', '').strip() or None
                     project.announcement = request.form.get('announcement', '').strip() or None
                     project.force_update = request.form.get('force_update') == 'on'
-                    project.updated_at = datetime.utcnow()
+                    project.updated_at = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
                     
                     db.session.commit()
                     flash('项目更新成功', 'success')
@@ -607,7 +663,7 @@ def reset_dev_id():
         # 生成新的DevID
         new_dev_id = str(uuid.uuid4())
         current_user.dev_id = new_dev_id
-        current_user.last_login = datetime.utcnow()
+        current_user.last_login = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
         db.session.commit()
         
         # 返回包含新DevID的JSON响应
@@ -644,7 +700,7 @@ def get_project_data(project_id):
 @login_required
 def dashboard_licenses():
     def get_beijing_time():
-        return datetime.now(pytz.timezone('Asia/Shanghai'))
+        return datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
 
     # 获取用户所有项目
     projects = Project.query.filter_by(user_id=current_user.id).all()
@@ -879,6 +935,89 @@ def dashboard_licenses():
                          licenses=licenses,
                          selected_project_id=project_id if selected_project else None)
 
+@app.route('/dashboard/api-stats')
+@login_required
+def get_api_stats():
+    range_type = request.args.get('range', '24h')
+    stat_type = request.args.get('type', 'api')
+    
+    now = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
+    labels = []
+    data = []
+    
+    if range_type == '24h':
+        # 24小时数据，按小时分组
+        for i in range(24):
+            hour_start = now.replace(hour=i, minute=0, second=0, microsecond=0)
+            hour_end = hour_start + timedelta(hours=1)
+            labels.append(f"{i}:00")
+            
+            if stat_type == 'api':
+                count = ApiCallLog.query.filter(
+                    ApiCallLog.user_id == current_user.id,
+                    ApiCallLog.called_at >= hour_start,
+                    ApiCallLog.called_at < hour_end
+                ).count()
+            else:
+                count = LicenseKey.query.join(Project).filter(
+                    Project.user_id == current_user.id,
+                    LicenseKey.is_active == True,
+                    LicenseKey.activation_time >= hour_start,
+                    LicenseKey.activation_time < hour_end
+                ).count()
+            data.append(count)
+    
+    elif range_type == '7d':
+        # 7天数据，按天分组
+        for i in range(7):
+            day = now - timedelta(days=6-i)
+            day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            labels.append(day_start.strftime('%m-%d'))
+            
+            if stat_type == 'api':
+                count = ApiCallLog.query.filter(
+                    ApiCallLog.user_id == current_user.id,
+                    ApiCallLog.called_at >= day_start,
+                    ApiCallLog.called_at < day_end
+                ).count()
+            else:
+                count = LicenseKey.query.join(Project).filter(
+                    Project.user_id == current_user.id,
+                    LicenseKey.is_active == True,
+                    LicenseKey.activation_time >= day_start,
+                    LicenseKey.activation_time < day_end
+                ).count()
+            data.append(count)
+    
+    else:  # 30d
+        # 30天数据，按天分组
+        for i in range(30):
+            day = now - timedelta(days=29-i)
+            day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            labels.append(day_start.strftime('%m-%d'))
+            
+            if stat_type == 'api':
+                count = ApiCallLog.query.filter(
+                    ApiCallLog.user_id == current_user.id,
+                    ApiCallLog.called_at >= day_start,
+                    ApiCallLog.called_at < day_end
+                ).count()
+            else:
+                count = LicenseKey.query.join(Project).filter(
+                    Project.user_id == current_user.id,
+                    LicenseKey.is_active == True,
+                    LicenseKey.activation_time >= day_start,
+                    LicenseKey.activation_time < day_end
+                ).count()
+            data.append(count)
+    
+    return jsonify({
+        'labels': labels,
+        'data': data
+    })
+
 def get_action_name(action_type):
     return {
         'activate': '激活',
@@ -941,7 +1080,7 @@ def activate_license():
         return jsonify({'status': 'error', 'message': '卡密已被使用'}), 403
     
     # 激活卡密
-    license_key.activation_time = datetime.utcnow()
+    license_key.activation_time = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
     license_key.expiry_time = license_key.calculate_expiry()
     db.session.commit()
     
@@ -1664,7 +1803,7 @@ def activate_license_key(app_id):
             }), 403
         
         # Activate license
-        license_key.activation_time = datetime.utcnow()
+        license_key.activation_time = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
         license_key.expiry_time = license_key.calculate_expiry()
         db.session.commit()
         
@@ -3380,7 +3519,7 @@ def user_login(app_id):
     
     try:
         # 更新最后登录信息
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None)
         user.last_login_ip = request.remote_addr
         db.session.commit()
         
@@ -3531,6 +3670,96 @@ def user_register(app_id):
             'message': '注册失败'
         }), 500
 
+@app.route('/dashboard/generate-report', methods=['POST'])
+@login_required
+def generate_report():
+    # 创建报告记录
+    token = str(uuid.uuid4())
+    expires_at = datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None) + timedelta(minutes=10)
+    
+    report = Report(
+        user_id=current_user.id,
+        token=token,
+        expires_at=expires_at
+    )
+    db.session.add(report)
+    db.session.commit()
+    
+    # 返回报告URL
+    report_url = url_for('view_report', token=token, _external=True)
+    return jsonify({
+        'status': 'success',
+        'report_url': report_url
+    })
+
+@app.route('/report/<token>')
+def view_report(token):
+    report = Report.query.filter_by(token=token).first_or_404()
+    
+    if datetime.now(pytz.timezone('Asia/Shanghai')).replace(tzinfo=None) > report.expires_at:
+        db.session.delete(report)
+        db.session.commit()
+        abort(410, description="报告已过期")
+    
+    # 限制数据量 - 只获取最近30个项目
+    projects = Project.query.filter_by(user_id=report.user_id).order_by(
+        Project.created_at.desc()
+    ).limit(30).all()
+    
+    # 获取API调用统计（只统计前20个最频繁的API）
+    api_stats = db.session.query(
+        ApiCallLog.endpoint,
+        db.func.count(ApiCallLog.id).label('count')
+    ).filter(
+        ApiCallLog.user_id == report.user_id
+    ).group_by(
+        ApiCallLog.endpoint
+    ).order_by(
+        db.func.count(ApiCallLog.id).desc()
+    ).limit(20).all()
+    
+    # 获取卡密统计（按项目分组，限制30个项目）
+    license_stats = db.session.query(
+        Project.name,
+        db.func.count(LicenseKey.id).label('total'),
+        db.func.sum(db.case((LicenseKey.is_active == True, 1), else_=0)).label('active'),
+        db.func.sum(db.case((LicenseKey.is_banned == True, 1), else_=0)).label('banned')
+    ).join(
+        Project
+    ).filter(
+        Project.user_id == report.user_id
+    ).group_by(
+        Project.name
+    ).order_by(
+        db.func.count(LicenseKey.id).desc()
+    ).limit(30).all()
+    
+    # 获取用户统计（按项目分组，限制30个项目）
+    user_stats = db.session.query(
+        Project.name,
+        db.func.count(ProjectUser.id).label('total'),
+        db.func.sum(db.case((ProjectUser.is_active == True, 1), else_=0)).label('active'),
+        db.func.sum(db.case((ProjectUser.is_banned == True, 1), else_=0)).label('banned')
+    ).join(
+        Project
+    ).filter(
+        Project.user_id == report.user_id
+    ).group_by(
+        Project.name
+    ).order_by(
+        db.func.count(ProjectUser.id).desc()
+    ).limit(30).all()
+    
+    return render_template('dashboard/report.html',
+                         user=report.user,
+                         projects=projects,
+                        
+                         api_stats=api_stats,
+                         license_stats=license_stats,
+                         user_stats=user_stats,
+                         expires_at=report.expires_at,
+                         now=datetime.now)
+
 # 错误处理
 @app.errorhandler(404)
 def page_not_found(e):
@@ -3552,4 +3781,7 @@ if __name__ == '__main__':
         update_existing_users_uid()
     os.makedirs(os.path.join(app.root_path, 'static', 'uploads'), exist_ok=True)
     app.register_blueprint(api_v1)
-    app.run(debug=True, port=Config.APP_PORT)
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(func=cleanup_expired_reports, trigger="interval", minutes=5)
+    scheduler.start()
+    app.run(debug=True, port=5000)
