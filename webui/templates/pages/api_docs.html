@@ -1,0 +1,2996 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimpleKeytime - API文档</title>
+    <link rel="icon" href="https://img.wjwj.top/2025/05/11/56d49f560848d1f28e6356b77b50a8dd.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-light: #6366f1;
+            --secondary-color: #f3f4f6;
+            --text-color: #374151;
+            --text-light: #6b7280;
+            --border-color: #e5e7eb;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            --sidebar-width: 280px;
+            --header-height: 70px;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: #f9fafb;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        /* 头部样式 */
+        header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: var(--header-height);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            padding: 0 2rem;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+        
+        .logo img {
+            height: 40px;
+            margin-right: 10px;
+        }
+        
+        .logo h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .search-container {
+            flex-grow: 1;
+            max-width: 500px;
+            margin: 0 2rem;
+            position: relative;
+        }
+        
+        .search-container input {
+            width: 100%;
+            padding: 0.6rem 1rem 0.6rem 2.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            background-color: #f8fafc;
+        }
+        
+        .search-container input:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            background-color: white;
+        }
+        
+        .search-container i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+        /* 桌面导航 */
+.desktop-nav {
+    display: flex;
+}
+
+.desktop-nav ul {
+    display: flex;
+    list-style: none;
+}
+
+.desktop-nav ul li {
+    margin-left: 1.5rem;
+}
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+        
+        nav ul li {
+            margin-left: 1.5rem;
+        }
+        
+        nav ul li a {
+            text-decoration: none;
+            color: var(--text-color);
+            font-weight: 500;
+            padding: 0.5rem 0;
+            position: relative;
+            transition: color 0.2s;
+        }
+        
+        nav ul li a:hover {
+            color: var(--primary-color);
+        }
+        
+        nav ul li a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary-color);
+            transition: width 0.3s;
+        }
+        
+        nav ul li a:hover::after {
+            width: 100%;
+        }
+        
+        /* 主体布局 */
+        .main-container {
+            display: flex;
+            flex: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        /* 侧边栏切换按钮样式 */
+.sidebar-toggle {
+    display: none; /* 默认隐藏 */
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-color);
+    margin-right: 1rem;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+/* 移动端显示切换按钮 */
+@media (max-width: 1024px) {
+    .sidebar-toggle {
+        display: block;
+    }
+    
+    /* 侧边栏初始状态隐藏 */
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: var(--header-height);
+        z-index: 90;
+        transform: translateX(-100%);
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+        height: calc(100vh - var(--header-height));
+    }
+    
+    /* 侧边栏打开状态 */
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    /* 内容区域调整 */
+    .content {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+        /* 侧边栏样式 */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: white;
+            border-right: 1px solid var(--border-color);
+            padding: 1.5rem 0;
+            position: sticky;
+            top: var(--header-height);
+            height: calc(100vh - var(--header-height));
+            overflow-y: auto;
+            transition: transform 0.3s;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .sidebar-title {
+            padding: 0.5rem 1.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .sidebar-title i {
+            margin-right: 0.5rem;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            transition: transform 0.2s;
+        }
+        
+        .sidebar-title.collapsed i {
+            transform: rotate(-90deg);
+        }
+        
+        .sidebar-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .sidebar-list.collapsed {
+            display: none;
+        }
+        
+        .sidebar-list li a {
+            display: block;
+            padding: 0.5rem 1.5rem 0.5rem 2.5rem;
+            color: var(--text-color);
+            text-decoration: none;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        
+        .sidebar-list li a:hover {
+            background-color: var(--secondary-color);
+            color: var(--primary-color);
+        }
+        
+        .sidebar-list li a.active {
+            background-color: rgba(79, 70, 229, 0.05);
+            color: var(--primary-color);
+            border-left-color: var(--primary-color);
+            font-weight: 500;
+        }
+        
+        /* 内容区域样式 */
+        .content {
+            flex: 1;
+            padding: 2rem;
+            background-color: white;
+            margin-left: var(--sidebar-width);
+        }
+        
+        .section {
+            margin-bottom: 3rem;
+            scroll-margin-top: calc(var(--header-height) + 20px);
+        }
+        
+        .section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .section h3 {
+            font-size: 1.4rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-color);
+        }
+        
+        .section p {
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            line-height: 1.7;
+        }
+
+        .section pre {
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            line-height: 1.7;
+        }
+
+        .section h4 {
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            line-height: 1.7;
+        }
+
+        .section span {
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            line-height: 1.7;
+        }
+
+        .section td {
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            line-height: 1.7;
+        }
+        
+        /* API卡片样式 */
+        .api-card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .api-header {
+            background-color: var(--secondary-color);
+            padding: 0.8rem 1.2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .api-method {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 1rem;
+            min-width: 70px;
+            text-align: center;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: white;
+        }
+        
+        .method-get { background-color: var(--info-color); }
+        .method-post { background-color: var(--success-color); }
+        .method-put { background-color: var(--warning-color); }
+        .method-delete { background-color: var(--error-color); }
+        
+        .api-path {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.95rem;
+            flex-grow: 1;
+        }
+        
+        .api-toggle {
+            color: var(--text-light);
+            transition: transform 0.2s;
+        }
+        
+        .api-card.collapsed .api-toggle {
+            transform: rotate(-90deg);
+        }
+        
+        .api-content {
+            padding: 1.2rem;
+        }
+        
+        .api-content.collapsed {
+            display: none;
+        }
+        
+        .api-description {
+            margin-bottom: 1.5rem;
+        }
+        
+        /* 参数表格样式 */
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.95rem;
+        }
+        
+        .param-table th, .param-table td {
+            border: 1px solid var(--border-color);
+            padding: 0.8rem 1rem;
+            text-align: left;
+        }
+        
+        .param-table th {
+            background-color: var(--secondary-color);
+            font-weight: 600;
+        }
+        
+        .param-table tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
+        .param-required {
+            color: var(--error-color);
+            font-weight: bold;
+        }
+        
+        /* 代码块样式 */
+        .code-block {
+            background-color: #f8f8f8;
+            border-radius: 6px;
+            padding: 1rem;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+        
+        .code-block .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: rgba(0,0,0,0.05);
+            border: none;
+            border-radius: 4px;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: all 0.2s;
+        }
+        
+        .code-block .copy-btn:hover {
+            background-color: rgba(0,0,0,0.1);
+            color: var(--text-color);
+        }
+        
+        /* 响应示例样式 */
+        .response-example {
+            margin-top: 1.5rem;
+        }
+        
+        .response-example h4 {
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .response-example h4 i {
+            margin-right: 0.5rem;
+        }
+        
+        .success-response {
+            border-left: 4px solid var(--success-color);
+            padding-left: 1rem;
+        }
+        
+        .error-response {
+            border-left: 4px solid var(--error-color);
+            padding-left: 1rem;
+        }
+        
+        /* 页脚样式 */
+        footer {
+            background-color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 3rem;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .footer-links a {
+            margin: 0 1rem;
+            color: var(--text-color);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer-links a:hover {
+            color: var(--primary-color);
+        }
+        
+        .copyright {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        /* 移动端响应式 */
+        @media (max-width: 1024px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                z-index: 90;
+                transform: translateX(-100%);
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .content {
+                margin-left: 0;
+            }
+        }
+        
+        /* 暗色模式切换 */
+        .dark-mode-toggle {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: 1rem;
+            transition: color 0.2s;
+        }
+        
+        .dark-mode-toggle:hover {
+            color: var(--primary-color);
+        }
+        
+        /* 暗色模式样式 */
+        body.dark-mode {
+            --primary-color: #818cf8;
+            --primary-light: #a5b4fc;
+            --secondary-color: #1e293b;
+            --text-color: #e2e8f0;
+            --text-light: #94a3b8;
+            --border-color: #334155;
+            --success-color: #34d399;
+            --error-color: #f87171;
+            --warning-color: #fbbf24;
+            --info-color: #60a5fa;
+            background-color: #0f172a;
+        }
+        
+        body.dark-mode header,
+        body.dark-mode .sidebar,
+        body.dark-mode .api-card,
+        body.dark-mode .content,
+        body.dark-mode footer {
+            background-color: #1e293b;
+            border-color: #334155;
+        }
+        
+        body.dark-mode .api-header,
+        body.dark-mode .param-table th,
+        body.dark-mode .param-table tr:nth-child(even) {
+            background-color: #334155;
+        }
+        
+        body.dark-mode .code-block {
+            background-color: #334155;
+            border-color: #475569;
+        }
+        
+        body.dark-mode .search-container input {
+            background-color: #334155;
+            border-color: #475569;
+            color: #e2e8f0;
+        }
+        
+        body.dark-mode .search-container input:focus {
+            background-color: #334155;
+        }
+        
+        /* 返回顶部按钮 */
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 3rem;
+            height: 3rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 99;
+        }
+        
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .back-to-top:hover {
+            background-color: var(--primary-light);
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 0;
+            color: var(--text-light);
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--border-color);
+        }
+        
+        /* 注意事项 */
+        .note {
+            background-color: #e7f5fe;
+            border-left: 4px solid #3498db;
+            padding: 10px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        body.dark-mode .note {
+            background-color: #1e3a8a;
+            border-left-color: #3b82f6;
+        }
+
+/* 移动端特定样式 - 确保三个元素在一行 */
+@media (max-width: 768px) {
+    .header-content {
+        display: flex;
+        flex-wrap: nowrap; /* 禁止换行 */
+        align-items: center;
+        padding: 0.5rem;
+        overflow: hidden; /* 隐藏溢出的内容 */
+    }
+    
+    /* 侧边栏按钮 */
+    .sidebar-toggle {
+        display: flex;
+        flex: 0 0 auto;
+        width: 40px;
+        height: 40px;
+        margin-right: 8px;
+    }
+    
+    /* Logo - 固定宽度，超出部分隐藏 */
+    .logo {
+        flex: 0 1 auto;
+        min-width: 0; /* 允许缩小 */
+        display: flex;
+        align-items: center;
+        margin-right: 8px;
+        overflow: hidden;
+    }
+    
+    .logo img {
+        height: 30px;
+        width: 30px;
+        min-width: 30px; /* 固定图标大小 */
+        margin-right: 8px;
+    }
+    
+    .logo h1 {
+        font-size: 1.1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* 搜索框 - 自动填充剩余空间 */
+    .search-container {
+        flex: 1 1 auto;
+        min-width: 0; /* 允许缩小 */
+        margin: 0;
+    }
+    
+    .search-container input {
+        width: 100%;
+        padding: 0.4rem 0.8rem 0.4rem 2rem;
+        font-size: 0.8rem;
+    }
+    
+    .search-container i {
+        left: 0.6rem;
+        font-size: 0.8rem;
+    }
+    
+    /* 隐藏不需要的元素 */
+    .desktop-nav,
+    .dark-mode-toggle {
+        display: none;
+    }
+}
+    
+    /* 内容区域调整 */
+    .content {
+        padding: 1rem;
+    }
+    
+    /* API卡片调整 */
+    .api-header {
+        padding: 0.6rem;
+    }
+    
+    .api-method {
+        min-width: 60px;
+        font-size: 0.8rem;
+        margin-right: 0.5rem;
+    }
+    
+    .api-path {
+        font-size: 0.85rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* 参数表格调整 */
+    .param-table th, 
+    .param-table td {
+        padding: 0.4rem;
+        font-size: 0.85rem;
+    }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <!-- 移动端菜单按钮 -->
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <!-- Logo部分 -->
+            <a href="#" class="logo">
+                <img src="https://img.wjwj.top/2025/05/11/56d49f560848d1f28e6356b77b50a8dd.png" alt="SimpleKeytime Logo">
+                <h1>SimpleKeytime API</h1>
+            </a>
+            
+            <!-- 搜索框 -->
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="搜索API...">
+            </div>
+            
+            <!-- 桌面端导航菜单 -->
+            <nav class="desktop-nav">
+                <ul>
+                    <li><a href="#overview">概览</a></li>
+                    <li><a href="#projects">项目管理</a></li>
+                    <li><a href="#users">用户管理</a></li>
+                    <li><a href="#licenses">卡密管理</a></li>
+                </ul>
+            </nav>
+            
+            <!-- 桌面端暗色模式切换按钮 -->
+            <button class="dark-mode-toggle" id="darkModeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </header>
+    
+    <div class="main-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title" data-section="overview">
+                    <i class="fas fa-chevron-down"></i>
+                    <span>API概览</span>
+                </div>
+                <ul class="sidebar-list" id="overview-list">
+                    <li><a href="#overview" class="active">基础信息</a></li>
+                    <li><a href="#authentication">认证方式</a></li>
+                    <li><a href="#response-format">响应格式</a></li>
+                    <li><a href="#error-codes">错误码</a></li>
+                </ul>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-title" data-section="projects">
+                    <i class="fas fa-chevron-down"></i>
+                    <span>项目管理API</span>
+                </div>
+                <ul class="sidebar-list" id="projects-list">
+                    <li><a href="#get-project-info">获取项目信息</a></li>
+                    <li><a href="#get-latest-version">获取最新版本</a></li>
+                    <li><a href="#get-update-url">获取更新URL</a></li>
+                    <li><a href="#get-update-notice">获取更新公告</a></li>
+                    <li><a href="#get-force-update">获取强制更新状态</a></li>
+                </ul>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-title" data-section="users">
+                    <i class="fas fa-chevron-down"></i>
+                    <span>用户管理API</span>
+                </div>
+                <ul class="sidebar-list" id="users-list">
+                    <li><a href="#check-register-status">检查注册状态</a></li>
+                    <li><a href="#get-user-data">获取用户信息</a></li>
+                    <li><a href="#get-register-date">获取注册日期</a></li>
+                    <li><a href="#get-last-login">获取最后登录</a></li>
+                    <li><a href="#ban-user">封禁用户</a></li>
+                    <li><a href="#unban-user">解封用户</a></li>
+                    <li><a href="#delete-user">删除用户</a></li>
+                    <li><a href="#send-reset-email">发送重置邮件</a></li>
+                    <li><a href="#user-login">用户登录</a></li>
+                    <li><a href="#user-register">用户注册</a></li>
+                </ul>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-title" data-section="licenses">
+                    <i class="fas fa-chevron-down"></i>
+                    <span>卡密管理API</span>
+                </div>
+                <ul class="sidebar-list" id="licenses-list">
+                    <li><a href="#get-license-status">获取卡密状态</a></li>
+                    <li><a href="#get-license-data">获取卡密信息</a></li>
+                    <li><a href="#activate-license">激活卡密</a></li>
+                    <li><a href="#deactivate-license">取消激活</a></li>
+                    <li><a href="#delete-license">删除卡密</a></li>
+                    <li><a href="#disable-license">禁用卡密</a></li>
+                    <li><a href="#enable-license">启用卡密</a></li>
+                    <li><a href="#ban-license">封禁卡密</a></li>
+                    <li><a href="#unban-license">解封卡密</a></li>
+                </ul>
+            </div>
+        </aside>
+        
+        <main class="content" id="content">
+            <!-- 概览部分 -->
+            <section id="overview" class="section">
+                <h2><i class="fas fa-info-circle"></i> API概览</h2>
+                <p>SimpleKeytime API 提供了一套完整的接口，用于管理项目、用户和卡密信息。所有API端点均以 <code>/v1/api</code> 为前缀。</p>
+                
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <pre># 基础URL
+https://api.simplekeytime.com/v1/api</pre>
+                </div>
+            </section>
+            
+            <section id="authentication" class="section">
+                <h2><i class="fas fa-key"></i> 认证方式</h2>
+                <p>大多数API请求需要在Header中包含API密钥进行认证：</p>
+                
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <pre>Authorization: Bearer [您的API密钥]</pre>
+                    <p>或者</p>
+                    <pre>dev_id: [您的API密钥]</pre>
+                </div>
+                
+                <p>部分公开API（如获取项目信息）不需要认证。</p>
+            </section>
+            
+            <section id="response-format" class="section">
+                <h2><i class="fas fa-exchange-alt"></i> 响应格式</h2>
+                <p>所有API响应都遵循以下JSON格式：</p>
+                
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                    <pre>{
+    "status": "success", // 或 "error"
+    "data": { ... },    // 成功时返回的数据
+    "message": "错误信息" // 错误时返回的消息
+}</pre>
+                </div>
+            </section>
+            
+            <section id="error-codes" class="section">
+                <h2><i class="fas fa-exclamation-triangle"></i> 错误码</h2>
+                <table class="param-table">
+                    <tr>
+                        <th>状态码</th>
+                        <th>描述</th>
+                    </tr>
+                    <tr>
+                        <td>200</td>
+                        <td>请求成功</td>
+                    </tr>
+                    <tr>
+                        <td>400</td>
+                        <td>请求参数错误</td>
+                    </tr>
+                    <tr>
+                        <td>401</td>
+                        <td>未授权访问</td>
+                    </tr>
+                    <tr>
+                        <td>403</td>
+                        <td>禁止访问</td>
+                    </tr>
+                    <tr>
+                        <td>404</td>
+                        <td>资源不存在</td>
+                    </tr>
+                    <tr>
+                        <td>409</td>
+                        <td>资源冲突（如用户名或邮箱已存在）</td>
+                    </tr>
+                    <tr>
+                        <td>500</td>
+                        <td>服务器内部错误</td>
+                    </tr>
+                </table>
+            </section>
+            
+            <!-- 项目管理API部分 -->
+            <section id="projects" class="section">
+                <h2><i class="fas fa-project-diagram"></i> 项目管理API</h2>
+                <p>通过RESTful API管理您的项目信息，包括版本控制、更新通知和强制更新设置。</p>
+                
+                <div class="api-card" id="get-project-info">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/projects/{app_id}</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取项目完整信息</h3>
+                            <p>通过项目AppID获取项目的完整信息，包括项目名称、创建时间和所有数据字段。</p>
+                            
+                            <h4>路径参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目的唯一AppID</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/projects/550e8400-e29b-41d4-a716-446655440000"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "name": "我的项目",
+        "created_at": "2023-01-01 08:00:00",
+        "alldata": {
+            "latestVersion": "1.2.0",
+            "updateUrl": "https://a.com/download/1.2.0",
+            "updateNotice": "修复了若干bug，提升了稳定性",
+            "ifForce": false
+        }
+    }
+}</pre>
+                                    </div>
+                                </div>
+                                
+                                <h4><i class="fas fa-times-circle"></i> 错误响应示例</h4>
+                                <div class="error-response">
+                                    <p>状态码: 404</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "error",
+    "message": "Project not found"
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="get-latest-version">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/projects/{app_id}/latestVersion</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取项目最新版本</h3>
+                            <p>通过项目AppID获取项目的最新版本号。</p>
+                            
+                            <h4>路径参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目的唯一AppID</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/projects/550e8400-e29b-41d4-a716-446655440000/latestVersion"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": "1.2.0"
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="get-update-url">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/projects/{app_id}/updateUrl</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取项目更新URL</h3>
+                            <p>通过项目AppID获取项目的更新下载URL。</p>
+                            
+                            <h4>路径参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目的唯一AppID</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/projects/550e8400-e29b-41d4-a716-446655440000/updateUrl"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": "https://a.com/download/1.2.0"
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="get-update-notice">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/projects/{app_id}/updateNotice</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取项目更新公告</h3>
+                            <p>通过项目AppID获取项目的最新更新公告。</p>
+                            
+                            <h4>路径参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目的唯一AppID</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/projects/550e8400-e29b-41d4-a716-446655440000/updateNotice"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": "修复了若干bug，提升了稳定性"
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="get-force-update">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/projects/{app_id}/ifForce</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取项目是否强制更新</h3>
+                            <p>通过项目AppID获取项目是否设置了强制更新。</p>
+                            
+                            <h4>路径参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目的唯一AppID</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/projects/550e8400-e29b-41d4-a716-446655440000/ifForce"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": false
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 用户管理API部分 -->
+            <section id="users" class="section">
+                <h2><i class="fas fa-users"></i> 用户管理API</h2>
+                <p>管理用户信息、注册、登录、封禁等操作。</p>
+                
+                <div class="api-card" id="check-register-status">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/project-users/{app_id}/ifRegister</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>检查用户注册状态</h3>
+                            <p>检查指定用户是否已注册。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>uid</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户UID</td>
+                                </tr>
+                                <tr>
+                                    <td>email</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户邮箱</td>
+                                </tr>
+                            </table>
+                            <div class="note">
+                                <p>注意：必须提供username、uid或email中的一个参数</p>
+                            </div>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/ifRegister?username=testuser"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": "已注册"  // 可能值："已注册"、"未找到"、"邮箱未验证"
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="get-user-data">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/project-users/{app_id}/alldata</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取用户完整信息</h3>
+                            <p>获取指定用户的完整信息（不含密码）。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>user_id</td>
+                                    <td>查询</td>
+                                    <td>integer</td>
+                                    <td>可选</td>
+                                    <td>用户ID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>uid</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户UID</td>
+                                </tr>
+                                <tr>
+                                    <td>email</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户邮箱</td>
+                                </tr>
+                            </table>
+                            <div class="note">
+                                <p>注意：必须提供user_id、username、uid或email中的一个参数</p>
+                            </div>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/alldata?dev_id=dev123&username=testuser"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "id": 1,
+        "uid": "123456789012",
+        "username": "testuser",
+        "email": "user@example.com",
+        "nickname": "测试用户",
+        "signature": "个性签名",
+        "avatar": "/static/uploads/avatar.jpg",
+        "is_active": true,
+        "is_banned": false,
+        "created_at": "2023-01-01T00:00:00"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="get-register-date">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/project-users/{app_id}/registerDate</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取用户注册日期</h3>
+                            <p>获取指定用户的注册日期。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>user_id</td>
+                                    <td>查询</td>
+                                    <td>integer</td>
+                                    <td>可选</td>
+                                    <td>用户ID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>uid</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户UID</td>
+                                </tr>
+                                <tr>
+                                    <td>email</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户邮箱</td>
+                                </tr>
+                            </table>
+                            <div class="note">
+                                <p>注意：必须提供user_id、username、uid或email中的一个参数</p>
+                            </div>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/registerDate?dev_id=dev123&username=testuser"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": "2023-01-01T00:00:00"
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="get-last-login">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/project-users/{app_id}/lastLogin</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取用户最后登录信息</h3>
+                            <p>获取指定用户的最后登录时间和IP。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>user_id</td>
+                                    <td>查询</td>
+                                    <td>integer</td>
+                                    <td>可选</td>
+                                    <td>用户ID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>uid</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户UID</td>
+                                </tr>
+                                <tr>
+                                    <td>email</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户邮箱</td>
+                                </tr>
+                            </table>
+                            <div class="note">
+                                <p>注意：必须提供user_id、username、uid或email中的一个参数</p>
+                            </div>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/lastLogin?dev_id=dev123&username=testuser"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "last_login": "2023-01-01T00:00:00",
+        "last_login_ip": "127.0.0.1"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="ban-user">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/project-users/{app_id}/ban</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>封禁用户</h3>
+                            <p>封禁指定用户。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>user_id</td>
+                                    <td>表单</td>
+                                    <td>integer</td>
+                                    <td>可选</td>
+                                    <td>用户ID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>uid</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户UID</td>
+                                </tr>
+                                <tr>
+                                    <td>email</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户邮箱</td>
+                                </tr>
+                            </table>
+                            <div class="note">
+                                <p>注意：必须提供user_id、username、uid或email中的一个参数</p>
+                            </div>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/ban" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&username=testuser"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "username": "testuser"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="unban-user">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/project-users/{app_id}/unban</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>解封用户</h3>
+                            <p>解封指定用户。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>user_id</td>
+                                    <td>表单</td>
+                                    <td>integer</td>
+                                    <td>可选</td>
+                                    <td>用户ID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>uid</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户UID</td>
+                                </tr>
+                                <tr>
+                                    <td>email</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户邮箱</td>
+                                </tr>
+                            </table>
+                            <div class="note">
+                                <p>注意：必须提供user_id、username、uid或email中的一个参数</p>
+                            </div>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/unban" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&username=testuser"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "username": "testuser"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="delete-user">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/project-users/{app_id}/delete</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>删除用户</h3>
+                            <p>删除指定用户。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>user_id</td>
+                                    <td>表单</td>
+                                    <td>integer</td>
+                                    <td>可选</td>
+                                    <td>用户ID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>uid</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户UID</td>
+                                </tr>
+                                <tr>
+                                    <td>email</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户邮箱</td>
+                                </tr>
+                            </table>
+                            <div class="note">
+                                <p>注意：必须提供user_id、username、uid或email中的一个参数</p>
+                            </div>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/delete" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&username=testuser"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "username": "testuser"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="send-reset-email">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/project-users/{app_id}/sendReset</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>发送密码重置邮件</h3>
+                            <p>向指定用户发送密码重置邮件。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>user_id</td>
+                                    <td>表单</td>
+                                    <td>integer</td>
+                                    <td>可选</td>
+                                    <td>用户ID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>uid</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户UID</td>
+                                </tr>
+                                <tr>
+                                    <td>email</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>用户邮箱</td>
+                                </tr>
+                            </table>
+                            <div class="note">
+                                <p>注意：必须提供user_id、username、uid或email中的一个参数</p>
+                            </div>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/sendReset" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&email=user@example.com"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "email": "user@example.com"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="user-login">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/project-users/{app_id}/login</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>用户登录</h3>
+                            <p>用户登录API。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>password</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>密码</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/login" \
+-d "username=testuser&password=yourpassword"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "user_id": 1,
+        "username": "testuser",
+        "last_login": "2023-01-01T00:00:00",
+        "last_login_ip": "127.0.0.1"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="user-register">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/project-users/{app_id}/register</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>用户注册</h3>
+                            <p>用户注册API。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>username</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>用户名</td>
+                                </tr>
+                                <tr>
+                                    <td>email</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>邮箱</td>
+                                </tr>
+                                <tr>
+                                    <td>password</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>密码</td>
+                                </tr>
+                                <tr>
+                                    <td>nickname</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>昵称</td>
+                                </tr>
+                                <tr>
+                                    <td>signature</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td>可选</td>
+                                    <td>个性签名</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/project-users/550e8400-e29b-41d4-a716-446655440000/register" \
+-d "username=newuser&email=newuser@example.com&password=yourpassword&nickname=新用户"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "user_id": 2,
+        "username": "newuser",
+        "email": "newuser@example.com"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 卡密管理API部分 -->
+            <section id="licenses" class="section">
+                <h2><i class="fas fa-key"></i> 卡密管理API</h2>
+                <p>管理卡密的激活、禁用、封禁等操作。</p>
+                
+                <div class="api-card" id="get-license-status">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/licenses/{app_id}/status</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取卡密状态</h3>
+                            <p>获取指定项目的卡密状态概览。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/licenses/550e8400-e29b-41d4-a716-446655440000/status" \
+-H "Authorization: Bearer your_api_key"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": "可用"
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="get-license-data">
+                    <div class="api-header">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/licenses/{app_id}/alldata</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>获取卡密完整信息</h3>
+                            <p>获取指定卡密的完整信息。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>key</td>
+                                    <td>查询</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>卡密</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X GET "https://api.simplekeytime.com/v1/api/licenses/550e8400-e29b-41d4-a716-446655440000/alldata?dev_id=dev123&key=ABC123DEF456" \
+-H "Authorization: Bearer your_api_key"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "status": "已激活",
+        "key": "ABC123DEF456",
+        "created_at": "2023-01-01T00:00:00",
+        "duration_minutes": 1440,
+        "project_name": "我的项目",
+        "activation_time": "2023-01-02T00:00:00",
+        "expiry_time": "2023-01-03T00:00:00"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="activate-license">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/licenses/{app_id}/activate</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>激活卡密</h3>
+                            <p>激活指定卡密。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>key</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>卡密</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/licenses/550e8400-e29b-41d4-a716-446655440000/activate" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&key=ABC123DEF456"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "duration_minutes": 1440,
+        "expiry_time": "2023-01-03T00:00:00",
+        "project_name": "我的项目"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="deactivate-license">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/licenses/{app_id}/deactivate</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>取消激活卡密</h3>
+                            <p>取消激活指定卡密。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>key</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>卡密</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/licenses/550e8400-e29b-41d4-a716-446655440000/deactivate" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&key=ABC123DEF456"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "duration_minutes": 1440,
+        "project_name": "我的项目"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="delete-license">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/licenses/{app_id}/delete</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>删除卡密</h3>
+                            <p>删除指定卡密。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>key</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>卡密</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/licenses/550e8400-e29b-41d4-a716-446655440000/delete" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&key=ABC123DEF456"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "key": "ABC123DEF456",
+        "project_name": "我的项目"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="disable-license">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/licenses/{app_id}/disable</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>禁用卡密</h3>
+                            <p>禁用指定卡密。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>key</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>卡密</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/licenses/550e8400-e29b-41d4-a716-446655440000/disable" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&key=ABC123DEF456"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "key": "ABC123DEF456"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="enable-license">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/licenses/{app_id}/enable</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>启用卡密</h3>
+                            <p>启用指定卡密。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>key</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>卡密</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/licenses/550e8400-e29b-41d4-a716-446655440000/enable" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&key=ABC123DEF456"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "key": "ABC123DEF456"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="ban-license">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/licenses/{app_id}/ban</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>封禁卡密</h3>
+                            <p>封禁指定卡密。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>key</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>卡密</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/licenses/550e8400-e29b-41d4-a716-446655440000/ban" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&key=ABC123DEF456"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "key": "ABC123DEF456",
+        "project_name": "我的项目"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="api-card" id="unban-license">
+                    <div class="api-header">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/licenses/{app_id}/unban</span>
+                        <i class="fas fa-chevron-down api-toggle"></i>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-description">
+                            <h3>解封卡密</h3>
+                            <p>解封指定卡密。</p>
+                            
+                            <h4>请求参数</h4>
+                            <table class="param-table">
+                                <tr>
+                                    <th>参数</th>
+                                    <th>位置</th>
+                                    <th>类型</th>
+                                    <th>必填</th>
+                                    <th>描述</th>
+                                </tr>
+                                <tr>
+                                    <td>app_id</td>
+                                    <td>路径</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>项目AppID</td>
+                                </tr>
+                                <tr>
+                                    <td>dev_id</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>开发者DevID</td>
+                                </tr>
+                                <tr>
+                                    <td>key</td>
+                                    <td>表单</td>
+                                    <td>string</td>
+                                    <td class="param-required">是</td>
+                                    <td>卡密</td>
+                                </tr>
+                            </table>
+                            
+                            <h4>请求示例</h4>
+                            <div class="code-block">
+                                <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                <pre>curl -X POST "https://api.simplekeytime.com/v1/api/licenses/550e8400-e29b-41d4-a716-446655440000/unban" \
+-H "Authorization: Bearer your_api_key" \
+-d "dev_id=dev123&key=ABC123DEF456"</pre>
+                            </div>
+                            
+                            <div class="response-example">
+                                <h4><i class="fas fa-check-circle"></i> 成功响应示例</h4>
+                                <div class="success-response">
+                                    <p>状态码: 200</p>
+                                    <div class="code-block">
+                                        <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                                        <pre>{
+    "status": "success",
+    "data": {
+        "success": true,
+        "key": "ABC123DEF456",
+        "project_name": "我的项目"
+    }
+}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 搜索结果区域 -->
+            <section id="search-results" class="section" style="display: none;">
+                <h2><i class="fas fa-search"></i> 搜索结果</h2>
+                <div id="searchResultsContainer">
+                    <!-- 搜索结果将在这里动态生成 -->
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <button class="back-to-top" id="backToTop">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    
+    <footer>
+        <div class="footer-links">
+            <a href="#">首页</a>
+            <a href="#">文档</a>
+            <a href="#">API参考</a>
+            <a href="#">联系我们</a>
+        </div>
+        <p class="copyright">© 2023 SimpleKeytime. 保留所有权利。</p>
+    </footer>
+    
+    <script>
+        // 侧边栏折叠功能
+        document.querySelectorAll('.sidebar-title').forEach(title => {
+            title.addEventListener('click', () => {
+                const section = title.getAttribute('data-section');
+                const list = document.getElementById(`${section}-list`);
+                title.classList.toggle('collapsed');
+                list.classList.toggle('collapsed');
+            });
+        });
+        
+        // API卡片折叠功能
+        document.querySelectorAll('.api-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const card = header.parentElement;
+                const content = header.nextElementSibling;
+                card.classList.toggle('collapsed');
+                content.classList.toggle('collapsed');
+            });
+        });
+        
+        // 侧边栏链接点击高亮
+        document.querySelectorAll('.sidebar-list li a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.querySelectorAll('.sidebar-list li a').forEach(a => {
+                    a.classList.remove('active');
+                });
+                link.classList.add('active');
+                
+                // 移动端点击链接后关闭侧边栏
+                if (window.innerWidth <= 1024) {
+                    document.getElementById('sidebar').classList.remove('open');
+                }
+            });
+        });
+
+        // 切换
+        document.getElementById('darkModeToggle').addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.getElementById('darkModeToggle').querySelector('i');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        });
+        
+        // 返回顶部按钮
+        const backToTopButton = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.add('visible');
+            } else {
+                backToTopButton.classList.remove('visible');
+            }
+        });
+        
+        backToTopButton.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        
+        // 复制代码功能
+        function copyCode(button) {
+            const codeBlock = button.parentElement;
+            const code = codeBlock.querySelector('pre').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '已复制!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            });
+        }
+        
+        // 搜索功能
+        const searchInput = document.getElementById('searchInput');
+if (searchInput) {
+    searchInput.addEventListener('input', debounce(() => {
+        const query = searchInput.value.trim().toLowerCase();
+        const searchResultsContainer = document.getElementById('searchResultsContainer');
+        const searchResultsSection = document.getElementById('search-results');
+        
+        if (query.length === 0) {
+            searchResultsSection.style.display = 'none';
+            document.querySelectorAll('.section').forEach(section => {
+                if (section.id !== 'search-results') {
+                    section.style.display = 'block';
+                }
+            });
+            return;
+        }
+        
+        // 隐藏所有常规部分
+        document.querySelectorAll('.section').forEach(section => {
+            if (section.id !== 'search-results') {
+                section.style.display = 'none';
+            }
+        });
+        
+        searchResultsSection.style.display = 'block';
+        searchResultsContainer.innerHTML = '';
+        
+        // 搜索API卡片
+        const apiCards = document.querySelectorAll('.api-card');
+        let hasResults = false;
+        
+        apiCards.forEach(card => {
+            const content = card.textContent.toLowerCase();
+            if (content.includes(query)) {
+                hasResults = true;
+                const clone = card.cloneNode(true);
+                clone.classList.remove('collapsed');
+                clone.querySelector('.api-content').classList.remove('collapsed');
+                searchResultsContainer.appendChild(clone);
+            }
+        });
+        
+        if (!hasResults) {
+            searchResultsContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <h3>没有找到匹配的结果</h3>
+                    <p>请尝试不同的搜索关键词</p>
+                </div>
+            `;
+        }
+    }, 300));
+}
+
+// 添加防抖函数
+function debounce(func, wait) {
+    let timeout;
+    return function() {
+        const context = this, args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            func.apply(context, args);
+        }, wait);
+    };
+}
+        
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 90,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // 页面加载时高亮当前部分
+        window.addEventListener('load', () => {
+            const hash = window.location.hash;
+            if (hash) {
+                const targetElement = document.querySelector(hash);
+                if (targetElement) {
+                    setTimeout(() => {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 90,
+                            behavior: 'smooth'
+                        });
+                    }, 100);
+                }
+            }
+        });
+
+        // 确保DOM加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    // 侧边栏切换功能
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('open');
+        });
+    }
+    
+    // 点击内容区域关闭侧边栏（移动端）
+    const content = document.querySelector('.content');
+    if (content) {
+        content.addEventListener('click', function() {
+            if (window.innerWidth <= 1024 && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            }
+        });
+    }
+});
+    </script>
+</body>
+</html>

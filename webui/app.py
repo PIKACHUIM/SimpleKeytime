@@ -177,7 +177,7 @@ class ProjectUser(db.Model):
         if not self.reset_token or not self.reset_token_expires:
             return False
         return self.reset_token == token and datetime.utcnow() < self.reset_token_expires
-    
+
 # 上下文处理器
 @app.context_processor
 def inject_globals():
@@ -472,6 +472,12 @@ def change_password():
 @app.route('/')
 def index():
     return render_template('index.html')
+
+# API文档
+@app.route('/v1/api/doc')
+@login_required
+def apidoc():
+    return render_template('pages/api_docs.html')
 
 # 路由 - 控制台
 @app.route('/dashboard')

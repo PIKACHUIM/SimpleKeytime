@@ -70,6 +70,10 @@
                 <i class="sidebar-icon fas fa-user mr-3 text-gray-500"></i>
                 <span>我的账户</span>
             </a>
+            <a href="{{ url_for('apidoc') }}" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg {% if request.path == url_for('apidoc') %}active{% endif %}">
+                <i class="sidebar-icon fas fa-book mr-3 text-gray-500"></i>
+                <span>API文档</span>
+            </a>
             <div class="mt-8">
                 <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
                     <i class="fas fa-sign-out-alt mr-3 text-gray-500"></i>
