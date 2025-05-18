@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>重置您的{{ project.name }}账户密码</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f7fafc;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        .header {
+            background-color: #4f46e5;
+            padding: 30px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px;
+        }
+        .button-container {
+            text-align: center;
+            margin: 25px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #4f46e5;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 16px;
+        }
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #718096;
+            border-top: 1px solid #e2e8f0;
+        }
+        .highlight {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .muted {
+            color: #718096;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ project.name }}</h1>
+        </div>
+        
+        <div class="content">
+            <p>尊敬的 <span class="highlight">{{ user.nickname or user.username }}</span>,</p>
+            
+            <p>我们收到了您重置密码的请求。请点击下面的按钮设置新密码：</p>
+            
+            <div class="button-container">
+                <a href="{{ reset_url }}" class="button">重置密码</a>
+            </div>
+            
+            <p class="muted">如果按钮不起作用，请复制以下链接到浏览器地址栏访问：</p>
+            <p class="muted" style="word-break: break-all;">{{ reset_url }}</p>
+            
+            <p>如果您没有请求重置密码，请忽略此邮件。</p>
+            <p>此链接将在1小时后失效。</p>
+        </div>
+        
+        <div class="footer">
+            <p>© {{ current_year }} {{ project.name }}. 版权所有。</p>
+            <p>此邮件由系统自动发送，请勿直接回复。</p>
+        </div>
+    </div>
+</body>
+</html>

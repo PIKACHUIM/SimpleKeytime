@@ -1,5 +1,5 @@
 from argparse import _get_action_name
-from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, Flask, jsonify, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail, Message
@@ -17,6 +17,7 @@ from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
+app.config['WTF_CSRF_ENABLED'] = False  # 是否启用CSRF跨域保护，如果你不会配置，请不要开启！！！
 
 # 初始化扩展
 db = SQLAlchemy(app)
@@ -32,6 +33,9 @@ if app.config['MAIL_USE_SSL']:
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
     mail.ssl_context = context
+
+# 创建API蓝图
+api_v1 = Blueprint('api_v1', __name__, url_prefix='/v1/api')
 
 # 数据库模型
 class User(db.Model, UserMixin):
@@ -116,8 +120,8 @@ class Project(db.Model):
     download_url = db.Column(db.String(255))
     announcement = db.Column(db.Text)
     force_update = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('Asia/Shanghai')))
+    updated_at = db.Column(db.DateTime, onupdate=datetime.now(pytz.timezone('Asia/Shanghai')))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     license_keys = db.relationship('LicenseKey', back_populates='project', cascade='all, delete-orphan')
 
@@ -128,6 +132,52 @@ class Announcement(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
 
+class ProjectUser(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    uid = db.Column(db.String(12), unique=True, nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id', ondelete='CASCADE'), nullable=False)
+    username = db.Column(db.String(50), nullable=False)
+    email = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    nickname = db.Column(db.String(50))
+    signature = db.Column(db.String(200))
+    avatar = db.Column(db.String(255))
+    is_active = db.Column(db.Boolean, default=True)
+    is_banned = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
+    last_login_ip = db.Column(db.String(45))
+    reset_token = db.Column(db.String(64))
+    reset_token_expires = db.Column(db.DateTime)
+    
+    project = db.relationship('Project', backref=db.backref('users', lazy=True))
+    
+    def __init__(self, **kwargs):
+        super(ProjectUser, self).__init__(**kwargs)
+        if not self.uid:
+            self.uid = self.generate_uid()
+    
+    def generate_uid(self):
+        chars = string.digits
+        return ''.join([random.choice(chars) for _ in range(12)])
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    def generate_reset_token(self):
+        self.reset_token = str(uuid.uuid4())
+        self.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        db.session.commit()
+        return self.reset_token
+    
+    def verify_reset_token(self, token):
+        if not self.reset_token or not self.reset_token_expires:
+            return False
+        return self.reset_token == token and datetime.utcnow() < self.reset_token_expires
+    
 # 上下文处理器
 @app.context_processor
 def inject_globals():
@@ -135,7 +185,8 @@ def inject_globals():
         'app_name': app.config['APP_NAME'],
         'app_description': app.config['APP_DESCRIPTION'],
         'current_year': datetime.now().year,
-        'masked_email': lambda email: email[:3] + '****' + email[email.find('@'):] if email else ''
+        'masked_email': lambda email: email[:3] + '****' + email[email.find('@'):] if email else '',
+        'pytz': pytz
     }
 
 # 辅助函数
@@ -240,10 +291,9 @@ def login():
         
         if user.email_verified:
         # 登录用户
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now(pytz.timezone('Asia/Shanghai'))
             user.last_login_ip = request.remote_addr
             db.session.commit()
-        
             login_user(user, remember=remember)
             flash('登录成功', 'success')
             return redirect(url_for('dashboard_home'))
@@ -514,6 +564,7 @@ def dashboard_projects():
     projects = Project.query.filter_by(user_id=current_user.id)\
                           .order_by(Project.updated_at.desc())\
                           .all()
+
     return render_template('dashboard/projects.html', projects=projects, user=current_user)
 
 @app.route('/dashboard/my', methods=['GET', 'POST'])
@@ -894,6 +945,1370 @@ def activate_license():
         'duration_minutes': license_key.duration_minutes
     })
 
+# 项目用户管理路由
+# 项目用户管理路由
+@app.route('/dashboard/project-users', methods=['GET', 'POST'])
+@login_required
+def dashboard_project_users():
+    project_id = request.args.get('project_id')
+    
+    if not project_id and request.method == 'POST':
+        project_id = request.form.get('project_id')
+    
+    if not project_id:
+        flash('请从项目列表中选择一个项目', 'info')
+        return redirect(url_for('dashboard_projects'))
+    
+    project = Project.query.filter_by(id=project_id, user_id=current_user.id).first()
+    
+    if not project:
+        flash('项目不存在或无权访问', 'error')
+        return redirect(url_for('dashboard_projects'))
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'create':
+            try:
+                username = request.form.get('username').strip()
+                email = request.form.get('email').strip()
+                nickname = request.form.get('nickname', '').strip()
+                signature = request.form.get('signature', '').strip()
+                password = request.form.get('password')
+                
+                if not password:
+                    password = ''.join([random.choice(string.ascii_letters + string.digits) for _ in range(12)])
+                
+                if ProjectUser.query.filter_by(project_id=project.id, username=username).first():
+                    flash('用户名已存在', 'error')
+                    return redirect(url_for('dashboard_project_users', project_id=project.id))
+                
+                if ProjectUser.query.filter_by(project_id=project.id, email=email).first():
+                    flash('邮箱已被使用', 'error')
+                    return redirect(url_for('dashboard_project_users', project_id=project.id))
+                
+                user = ProjectUser(
+                    project_id=project.id,
+                    username=username,
+                    email=email,
+                    nickname=nickname if nickname else None,
+                    signature=signature if signature else None,
+                )
+                user.set_password(password)
+                db.session.add(user)
+                db.session.commit()
+                
+                flash(f'用户创建成功，初始密码: {password}', 'success')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'创建用户失败: {str(e)}')
+                flash('创建用户失败，请稍后再试', 'error')
+        
+        elif action == 'edit':
+            try:
+                user_id = request.form.get('user_id')
+                user = ProjectUser.query.filter_by(id=user_id, project_id=project.id).first()
+                
+                if user:
+                    user.username = request.form.get('username').strip()
+                    user.email = request.form.get('email').strip()
+                    user.nickname = request.form.get('nickname', '').strip() or None
+                    user.signature = request.form.get('signature', '').strip() or None
+                    
+                    new_password = request.form.get('password')
+                    if new_password:
+                        user.set_password(new_password)
+                    
+                    db.session.commit()
+                    flash('用户信息已更新', 'success')
+                else:
+                    flash('用户不存在或无权操作', 'error')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'更新用户失败: {str(e)}')
+                flash('更新用户失败', 'error')
+        
+        elif action == 'toggle_ban':
+            try:
+                user_id = request.form.get('user_id')
+                user = ProjectUser.query.filter_by(id=user_id, project_id=project.id).first()
+                
+                if user:
+                    user.is_banned = not user.is_banned
+                    user.is_active = not user.is_banned
+                    db.session.commit()
+                    flash(f'用户已{"封禁" if user.is_banned else "解封"}', 'success')
+                else:
+                    flash('用户不存在或无权操作', 'error')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'操作失败: {str(e)}')
+                flash('操作失败', 'error')
+        
+        elif action == 'delete':
+            try:
+                user_id = request.form.get('user_id')
+                user = ProjectUser.query.filter_by(id=user_id, project_id=project.id).first()
+                
+                if user:
+                    db.session.delete(user)
+                    db.session.commit()
+                    flash('用户已删除', 'success')
+                else:
+                    flash('用户不存在或无权操作', 'error')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'删除用户失败: {str(e)}')
+                flash('删除用户失败', 'error')
+        
+        elif action == 'send_reset_email':
+            try:
+                user_id = request.form.get('user_id')
+                user = ProjectUser.query.filter_by(id=user_id, project_id=project.id).first()
+                
+                if user:
+                    send_project_user_reset_email(user, project)
+                    flash('重置密码邮件已发送', 'success')
+                else:
+                    flash('用户不存在或无权操作', 'error')
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f'发送重置邮件失败: {str(e)}')
+                flash('发送重置邮件失败', 'error')
+        
+        return redirect(url_for('dashboard_project_users', project_id=project.id))
+    
+    users = ProjectUser.query.filter_by(project_id=project.id)\
+                          .order_by(ProjectUser.created_at.desc())\
+                          .all()
+    
+    return render_template('dashboard/project_users.html', 
+                         project=project,
+                         users=users)
+
+# 项目用户API
+@app.route('/api/project-users/<int:user_id>')
+@login_required
+def get_project_user(user_id):
+    user = ProjectUser.query.join(Project)\
+        .filter(
+            ProjectUser.id == user_id,
+            Project.user_id == current_user.id
+        ).first_or_404()
+    
+    return jsonify({
+        'id': user.id,
+        'uid': user.uid,
+        'username': user.username,
+        'email': user.email,
+        'nickname': user.nickname,
+        'signature': user.signature,
+        'is_active': user.is_active,
+        'is_banned': user.is_banned
+    })
+
+# 项目用户密码重置路由
+@app.route('/project-user-reset', methods=['GET', 'POST'])
+def project_user_reset():
+    token = request.args.get('token')
+    
+    if not token:
+        flash('无效的重置链接', 'error')
+        return redirect(url_for('index'))
+    
+    user = ProjectUser.query.filter_by(reset_token=token).first()
+    
+    if not user or not user.verify_reset_token(token):
+        flash('重置链接无效或已过期', 'error')
+        return redirect(url_for('index'))
+    
+    project = Project.query.get(user.project_id)
+    
+    if request.method == 'POST':
+        new_password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if new_password != confirm_password:
+            flash('两次输入的密码不一致', 'error')
+            return redirect(url_for('project_user_reset', token=token))
+        
+        user.set_password(new_password)
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.session.commit()
+        
+        flash('密码重置成功', 'success')
+        return redirect(url_for('index'))
+    
+    return render_template('auth/project_user_reset.html', 
+                         project=project,
+                         user=user)
+
+# 发送项目用户重置密码邮件
+def send_project_user_reset_email(user, project):
+    reset_token = user.generate_reset_token()
+    reset_url = url_for('project_user_reset', token=reset_token, _external=True)
+    
+    msg = Message(
+        subject=f'重置您的{project.name}账户密码',
+        recipients=[user.email],
+        html=render_template('emails/project_user_reset.html', 
+                          user=user, 
+                          project=project,
+                          reset_url=reset_url)
+    )
+    
+    try:
+        mail.send(msg)
+        return True
+    except Exception as e:
+        app.logger.error(f"发送重置邮件失败: {e}")
+        return False
+
+@api_v1.route('/projects/<app_id>', methods=['GET'])
+def get_project_info(app_id):
+    """
+    获取项目完整信息API
+    ---
+    tags:
+      - 项目管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+    responses:
+      200:
+        description: 项目完整信息
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: 我的项目
+                created_at:
+                  type: string
+                  format: date-time
+                  example: "2023-01-01T00:00:00"
+                alldata:
+                  type: object
+                  properties:
+                    latestVersion:
+                      type: string
+                      example: 1.0.0
+                    updateUrl:
+                      type: string
+                      example: https://example.com/download/latest
+                    updateNotice:
+                      type: string
+                      example: 重要更新说明
+                    ifForce:
+                      type: boolean
+                      example: false
+      404:
+        description: 项目不存在
+    """
+    return get_project_data(app_id, full_data=True)
+
+@api_v1.route('/projects/<app_id>/latestVersion', methods=['GET'])
+def get_latest_version(app_id):
+    """
+    获取项目最新版本
+    ---
+    tags:
+      - 项目管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+    responses:
+      200:
+        description: 最新版本信息
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: string
+              example: 1.0.0
+      404:
+        description: 项目不存在
+    """
+    return get_project_data(app_id, field='latest_version')
+
+@api_v1.route('/projects/<app_id>/updateUrl', methods=['GET'])
+def get_update_url(app_id):
+    """
+    获取项目更新URL
+    ---
+    tags:
+      - 项目管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+    responses:
+      200:
+        description: 更新URL
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: string
+              example: https://example.com/download/latest
+      404:
+        description: 项目不存在
+    """
+    return get_project_data(app_id, field='download_url')
+
+@api_v1.route('/projects/<app_id>/updateNotice', methods=['GET'])
+def get_update_notice(app_id):
+    """
+    获取项目更新公告
+    ---
+    tags:
+      - 项目管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+    responses:
+      200:
+        description: 更新公告
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: string
+              example: 重要更新说明
+      404:
+        description: 项目不存在
+    """
+    return get_project_data(app_id, field='announcement')
+
+@api_v1.route('/projects/<app_id>/ifForce', methods=['GET'])
+def get_if_force(app_id):
+    """
+    获取项目是否强制更新
+    ---
+    tags:
+      - 项目管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+    responses:
+      200:
+        description: 是否强制更新
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: boolean
+              example: false
+      404:
+        description: 项目不存在
+    """
+    return get_project_data(app_id, field='force_update')
+
+def get_project_data(app_id, full_data=False, field=None):
+    """
+    获取项目数据的通用函数
+    """
+    try:
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+        
+        if full_data:
+            response_data = {
+                'status': 'success',
+                'data': {
+                    'name': project.name,
+                    'created_at': project.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'alldata': {
+                        'latestVersion': project.latest_version or '',
+                        'updateUrl': project.download_url or '',
+                        'updateNotice': project.announcement or '',
+                        'ifForce': project.force_update or False
+                    }
+                }
+            }
+        elif field:
+            # 获取单个字段的值
+            value = getattr(project, field)
+            if value is None:
+                value = '' if field != 'force_update' else False
+            response_data = {
+                'status': 'success',
+                'data': value
+            }
+        
+        return jsonify(response_data)
+    
+    except Exception as e:
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+    
+@api_v1.route('/licenses/<app_id>/status', methods=['GET'])
+def get_license_status(app_id):
+    """
+    获取卡密状态API
+    ---
+    tags:
+      - 卡密管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+    responses:
+      200:
+        description: 卡密状态信息
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: string
+              example: 可用
+      404:
+        description: 项目不存在
+    """
+    try:
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+        
+        return jsonify({
+            'status': 'success',
+            'data': 'available'  # This would be more detailed in a real implementation
+        })
+    except Exception as e:
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
+@api_v1.route('/licenses/<app_id>/alldata', methods=['GET'])
+def get_license_all_data(app_id):
+    """
+    获取卡密完整信息API
+    ---
+    tags:
+      - 卡密管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: query
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: key
+        in: query
+        type: string
+        required: true
+        description: 卡密
+    responses:
+      200:
+        description: 卡密完整信息
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: 已激活
+                key:
+                  type: string
+                  example: ABC123DEF456
+                created_at:
+                  type: string
+                  format: date-time
+                  example: "2023-01-01T00:00:00"
+                duration_minutes:
+                  type: integer
+                  example: 1440
+                project_name:
+                  type: string
+                  example: 我的项目
+                activation_time:
+                  type: string
+                  format: date-time
+                  example: "2023-01-02T00:00:00"
+                expiry_time:
+                  type: string
+                  format: date-time
+                  example: "2023-01-03T00:00:00"
+      404:
+        description: 项目或卡密不存在
+      403:
+        description: 无权限访问
+    """
+    try:
+        dev_id = request.args.get('dev_id')
+        key = request.args.get('key')
+        
+        if not dev_id or not key:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing dev_id or key parameter'
+            }), 400
+        
+        # Verify project ownership
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+            
+        if project.owner.dev_id != dev_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized access'
+            }), 403
+        
+        # Get license key
+        license_key = LicenseKey.query.filter_by(
+            key=key,
+            project_id=project.id
+        ).first()
+        
+        if not license_key:
+            return jsonify({
+                'status': 'error',
+                'message': 'License key not found'
+            }), 404
+        
+        # Determine status
+        if license_key.is_banned:
+            status = '已封禁'
+        elif not license_key.is_active:
+            status = '已禁用'
+        elif license_key.activation_time:
+            if license_key.is_expired():
+                status = '已过期'
+            else:
+                status = '已激活'
+        else:
+            status = '可用'
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'status': status,
+                'key': license_key.key,
+                'created_at': license_key.created_at.isoformat(),
+                'duration_minutes': license_key.duration_minutes,
+                'project_name': project.name,
+                'activation_time': license_key.activation_time.isoformat() if license_key.activation_time else None,
+                'expiry_time': license_key.expiry_time.isoformat() if license_key.expiry_time else None
+            }
+        })
+    except Exception as e:
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
+@api_v1.route('/licenses/<app_id>/activate', methods=['POST'])
+def activate_license_key(app_id):
+    """
+    激活卡密API
+    ---
+    tags:
+      - 卡密管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: key
+        in: formData
+        type: string
+        required: true
+        description: 卡密
+    responses:
+      200:
+        description: 卡密激活结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                duration_minutes:
+                  type: integer
+                  example: 1440
+                expiry_time:
+                  type: string
+                  format: date-time
+                  example: "2023-01-03T00:00:00"
+                project_name:
+                  type: string
+                  example: 我的项目
+      404:
+        description: 项目或卡密不存在
+      403:
+        description: 无权限访问或卡密不可用
+    """
+    try:
+        dev_id = request.form.get('dev_id')
+        key = request.form.get('key')
+        
+        if not dev_id or not key:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing dev_id or key parameter'
+            }), 400
+        
+        # Verify project ownership
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+            
+        if project.owner.dev_id != dev_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized access'
+            }), 403
+        
+        # Get license key
+        license_key = LicenseKey.query.filter_by(
+            key=key,
+            project_id=project.id
+        ).first()
+        
+        if not license_key:
+            return jsonify({
+                'status': 'error',
+                'message': 'License key not found'
+            }), 404
+        
+        # Check if license can be activated
+        if license_key.is_banned or not license_key.is_active or license_key.activation_time:
+            return jsonify({
+                'status': 'error',
+                'message': 'License key cannot be activated'
+            }), 403
+        
+        # Activate license
+        license_key.activation_time = datetime.utcnow()
+        license_key.expiry_time = license_key.calculate_expiry()
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'duration_minutes': license_key.duration_minutes,
+                'expiry_time': license_key.expiry_time.isoformat(),
+                'project_name': project.name
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
+@api_v1.route('/licenses/<app_id>/deactivate', methods=['POST'])
+def deactivate_license_key(app_id):
+    """
+    取消激活卡密API
+    ---
+    tags:
+      - 卡密管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: key
+        in: formData
+        type: string
+        required: true
+        description: 卡密
+    responses:
+      200:
+        description: 取消激活结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                duration_minutes:
+                  type: integer
+                  example: 1440
+                project_name:
+                  type: string
+                  example: 我的项目
+      404:
+        description: 项目或卡密不存在
+      403:
+        description: 无权限访问
+    """
+    try:
+        dev_id = request.form.get('dev_id')
+        key = request.form.get('key')
+        
+        if not dev_id or not key:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing dev_id or key parameter'
+            }), 400
+        
+        # Verify project ownership
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+            
+        if project.owner.dev_id != dev_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized access'
+            }), 403
+        
+        # Get license key
+        license_key = LicenseKey.query.filter_by(
+            key=key,
+            project_id=project.id
+        ).first()
+        
+        if not license_key:
+            return jsonify({
+                'status': 'error',
+                'message': 'License key not found'
+            }), 404
+        
+        # Deactivate license
+        license_key.activation_time = None
+        license_key.expiry_time = None
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'duration_minutes': license_key.duration_minutes,
+                'project_name': project.name
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
+@api_v1.route('/licenses/<app_id>/delete', methods=['POST'])
+def delete_license_key(app_id):
+    """
+    删除卡密API
+    ---
+    tags:
+      - 卡密管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: key
+        in: formData
+        type: string
+        required: true
+        description: 卡密
+    responses:
+      200:
+        description: 删除结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                key:
+                  type: string
+                  example: ABC123DEF456
+                project_name:
+                  type: string
+                  example: 我的项目
+      404:
+        description: 项目或卡密不存在
+      403:
+        description: 无权限访问
+    """
+    try:
+        dev_id = request.form.get('dev_id')
+        key = request.form.get('key')
+        
+        if not dev_id or not key:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing dev_id or key parameter'
+            }), 400
+        
+        # Verify project ownership
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+            
+        if project.owner.dev_id != dev_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized access'
+            }), 403
+        
+        # Get license key
+        license_key = LicenseKey.query.filter_by(
+            key=key,
+            project_id=project.id
+        ).first()
+        
+        if not license_key:
+            return jsonify({
+                'status': 'error',
+                'message': 'License key not found'
+            }), 404
+        
+        # Delete license
+        db.session.delete(license_key)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'key': key,
+                'project_name': project.name
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
+@api_v1.route('/licenses/<app_id>/disable', methods=['POST'])
+def disable_license_key(app_id):
+    """
+    禁用卡密API
+    ---
+    tags:
+      - 卡密管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: key
+        in: formData
+        type: string
+        required: true
+        description: 卡密
+    responses:
+      200:
+        description: 禁用结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                key:
+                  type: string
+                  example: ABC123DEF456
+      404:
+        description: 项目或卡密不存在
+      403:
+        description: 无权限访问
+    """
+    try:
+        dev_id = request.form.get('dev_id')
+        key = request.form.get('key')
+        
+        if not dev_id or not key:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing dev_id or key parameter'
+            }), 400
+        
+        # Verify project ownership
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+            
+        if project.owner.dev_id != dev_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized access'
+            }), 403
+        
+        # Get license key
+        license_key = LicenseKey.query.filter_by(
+            key=key,
+            project_id=project.id
+        ).first()
+        
+        if not license_key:
+            return jsonify({
+                'status': 'error',
+                'message': 'License key not found'
+            }), 404
+        
+        # Disable license
+        license_key.is_active = False
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'key': key
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
+@api_v1.route('/licenses/<app_id>/enable', methods=['POST'])
+def enable_license_key(app_id):
+    """
+    启用卡密API
+    ---
+    tags:
+      - 卡密管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: key
+        in: formData
+        type: string
+        required: true
+        description: 卡密
+    responses:
+      200:
+        description: 启用结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                key:
+                  type: string
+                  example: ABC123DEF456
+      404:
+        description: 项目或卡密不存在
+      403:
+        description: 无权限访问
+    """
+    try:
+        dev_id = request.form.get('dev_id')
+        key = request.form.get('key')
+        
+        if not dev_id or not key:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing dev_id or key parameter'
+            }), 400
+        
+        # Verify project ownership
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+            
+        if project.owner.dev_id != dev_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized access'
+            }), 403
+        
+        # Get license key
+        license_key = LicenseKey.query.filter_by(
+            key=key,
+            project_id=project.id
+        ).first()
+        
+        if not license_key:
+            return jsonify({
+                'status': 'error',
+                'message': 'License key not found'
+            }), 404
+        
+        # Enable license (can't enable if banned)
+        if license_key.is_banned:
+            return jsonify({
+                'status': 'error',
+                'message': 'Cannot enable a banned license'
+            }), 403
+            
+        license_key.is_active = True
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'key': key
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
+@api_v1.route('/licenses/<app_id>/ban', methods=['POST'])
+def ban_license_key(app_id):
+    """
+    封禁卡密API
+    ---
+    tags:
+      - 卡密管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: key
+        in: formData
+        type: string
+        required: true
+        description: 卡密
+    responses:
+      200:
+        description: 封禁结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                key:
+                  type: string
+                  example: ABC123DEF456
+                project_name:
+                  type: string
+                  example: 我的项目
+      404:
+        description: 项目或卡密不存在
+      403:
+        description: 无权限访问
+    """
+    try:
+        dev_id = request.form.get('dev_id')
+        key = request.form.get('key')
+        
+        if not dev_id or not key:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing dev_id or key parameter'
+            }), 400
+        
+        # Verify project ownership
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+            
+        if project.owner.dev_id != dev_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized access'
+            }), 403
+        
+        # Get license key
+        license_key = LicenseKey.query.filter_by(
+            key=key,
+            project_id=project.id
+        ).first()
+        
+        if not license_key:
+            return jsonify({
+                'status': 'error',
+                'message': 'License key not found'
+            }), 404
+        
+        # Ban license
+        license_key.is_banned = True
+        license_key.is_active = False
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'key': key,
+                'project_name': project.name
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
+@api_v1.route('/licenses/<app_id>/unban', methods=['POST'])
+def unban_license_key(app_id):
+    """
+    解封卡密API
+    ---
+    tags:
+      - 卡密管理
+    parameters:
+      - name: app_id
+        in: path
+        type: string
+        required: true
+        description: 项目AppID
+      - name: dev_id
+        in: formData
+        type: string
+        required: true
+        description: 开发者DevID
+      - name: key
+        in: formData
+        type: string
+        required: true
+        description: 卡密
+    responses:
+      200:
+        description: 解封结果
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: success
+            data:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                key:
+                  type: string
+                  example: ABC123DEF456
+                project_name:
+                  type: string
+                  example: 我的项目
+      404:
+        description: 项目或卡密不存在
+      403:
+        description: 无权限访问
+    """
+    try:
+        dev_id = request.form.get('dev_id')
+        key = request.form.get('key')
+        
+        if not dev_id or not key:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing dev_id or key parameter'
+            }), 400
+        
+        # Verify project ownership
+        project = Project.query.filter_by(app_id=app_id).first()
+        if not project:
+            return jsonify({
+                'status': 'error',
+                'message': 'Project not found'
+            }), 404
+            
+        if project.owner.dev_id != dev_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized access'
+            }), 403
+        
+        # Get license key
+        license_key = LicenseKey.query.filter_by(
+            key=key,
+            project_id=project.id
+        ).first()
+        
+        if not license_key:
+            return jsonify({
+                'status': 'error',
+                'message': 'License key not found'
+            }), 404
+        
+        # Unban license
+        license_key.is_banned = False
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'success': True,
+                'key': key,
+                'project_name': project.name
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"API Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
 # 错误处理
 @app.errorhandler(404)
 def page_not_found(e):
@@ -914,4 +2329,5 @@ if __name__ == '__main__':
         create_default_admin()
         update_existing_users_uid()
     os.makedirs(os.path.join(app.root_path, 'static', 'uploads'), exist_ok=True)
-    app.run(debug=True)
+    app.register_blueprint(api_v1)
+    app.run(debug=True, port=80)

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务器错误 - {{ app_name }}</title>
+    <link href="https://cdn.jsdmirror.com/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .error-container {
+            background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .error-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+    </style>
+</head>
+<body class="error-container min-h-screen flex items-center">
+    <div class="container mx-auto px-4">
+        <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-8 text-center">
+            <div class="text-red-500 mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-4">500 - 服务器错误</h1>
+            <p class="text-gray-600 mb-6">
+                服务器遇到意外错误，无法完成您的请求
+            </p>
+            
+            {% if debug %}
+            <div class="mt-4 text-left">
+                <button onclick="toggleErrorDetails()" class="text-sm text-indigo-600 hover:underline mb-2">
+                    显示错误详情
+                </button>
+                <div id="errorDetails" class="error-details bg-gray-100 p-4 rounded text-xs font-mono">
+                    <p><strong>错误类型:</strong> {{ error.__class__.__name__ }}</p>
+                    <p><strong>错误信息:</strong> {{ error }}</p>
+                    <div class="mt-2">
+                        <p class="font-semibold">Traceback:</p>
+                        <pre class="whitespace-pre-wrap">{{ traceback }}</pre>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mt-8">
+                <a href="{{ url_for('index') }}" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition">
+                    返回首页
+                </a>
+                <p class="mt-4 text-sm text-gray-500">
+                    如果问题持续存在，请联系技术支持
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {% if debug %}
+    <script>
+        function toggleErrorDetails() {
+            const details = document.getElementById('errorDetails');
+            details.style.maxHeight = details.style.maxHeight ? null : details.scrollHeight + 'px';
+        }
+    </script>
+    {% endif %}
+</body>
+</html>

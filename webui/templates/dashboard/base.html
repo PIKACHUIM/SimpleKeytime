@@ -62,6 +62,10 @@
                 <i class="sidebar-icon fas fa-key mr-3 text-gray-500"></i>
                 <span>卡密管理</span>
             </a>
+            <a href="{{ url_for('dashboard_project_users') }}" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg {% if request.path == url_for('dashboard_project_users') %}active{% endif %}">
+                <i class="sidebar-icon fas fa-users mr-3 text-gray-500"></i>
+                <span>用户管理</span>
+            </a>
             <a href="{{ url_for('dashboard_my') }}" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg {% if request.path == url_for('dashboard_my') %}active{% endif %}">
                 <i class="sidebar-icon fas fa-user mr-3 text-gray-500"></i>
                 <span>我的账户</span>
