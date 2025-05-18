@@ -8,6 +8,13 @@
 
 **SimpleKeytime** 是一个专为开发者设计的现代化软件授权管理系统，提供完整的授权密钥管理、用户验证和软件更新解决方案。
 
+-----------
+
+服务支持：[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/SimpleHac/SimpleKeytime) ![Google Cloud](https://img.shields.io/badge/Google%20Cloud-4285F4?logo=google-cloud&logoColor=white) ![Microsoft SQL](https://img.shields.io/badge/Microsoft%20SQL%20Server-CC2927?logo=microsoft-sql-server&logoColor=white)
+
+使用技术：![Python](https://img.shields.io/badge/Python-14354C.svg?logo=python&logoColor=white) ![HTML5](https://img.shields.io/badge/HTML5-E34F26.svg?logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6.svg?logo=css3&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-323330.svg?logo=javascript&logoColor=F7DF1E) ![VueJS](https://img.shields.io/badge/Vue.js-35495e.svg?logo=vue.js&logoColor=4FC08D) ![tailwindcss](https://img.shields.io/badge/tailwindcss-38B2AC.svg?logo=tailwind-css&logoColor=white) ![sqlite](https://img.shields.io/badge/sqlite-07405e.svg?logo=sqlite&logoColor=white) 	![mysql](https://img.shields.io/badge/mysql-00000f.svg?logo=mysql&logoColor=white)
+
+-----------
 ## ✨ 核心特性
 
 - 🔑 **授权密钥管理** - 生成、分发和验证软件授权密钥
