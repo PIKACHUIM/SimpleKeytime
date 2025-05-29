@@ -7,10 +7,11 @@
      "nodejs_compat"
    ],
   "site": {
-    "bucket": "../webui/templates"
+    "bucket": "../webui/static"
   },
    "vars": {
-     "app_name": "APP名称"
+     "app_name": "APP名称",
+     "app_text": "APP介绍"
    },
    "r2_buckets": [
      {
