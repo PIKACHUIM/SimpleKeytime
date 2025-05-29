@@ -1,20 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "simplekeyweb",
-  "main": "src/index.tsx",
+  "main": "src/app.tsx",
   "compatibility_date": "2025-05-17",
    "compatibility_flags": [
      "nodejs_compat"
    ],
+  "site": {
+    "bucket": "../webui/templates"
+  },
    "vars": {
-     "MY_VAR": "my-variable"
+     "app_name": "APP名称"
    },
-   "kv_namespaces": [
-     {
-       "binding": "MY_KV_NAMESPACE",
-       "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-     }
-   ],
    "r2_buckets": [
      {
        "binding": "MY_BUCKET",
@@ -28,9 +25,6 @@
        "database_id": ""
      }
    ],
-   "ai": {
-     "binding": "AI"
-   },
    "observability": {
      "enabled": true,
      "head_sampling_rate": 1
